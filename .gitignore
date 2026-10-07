@@ -1,0 +1,49 @@
+# Operating System Artifacts
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+*.directory
+
+# IDE & Editor Configurations
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*~
+
+# Package Managers & Logs
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Temporary & Build Directories
+scratch/
+.temp/
+.tempmediaStorage/
+.user_uploaded/
+*.log
+.system_generated/
+.freebuff/
+.next/
+dist/
+build/
+
+# Packaged Extension Archives
+pack.zip
+*.crx
+*.pem

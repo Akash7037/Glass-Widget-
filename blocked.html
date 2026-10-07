@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Blocked — Stay focused</title>
+    <link rel="stylesheet" href="blocked.css" />
+  </head>
+  <body>
+    <div class="aurora" aria-hidden="true">
+      <span class="blob b1"></span>
+      <span class="blob b2"></span>
+      <span class="blob b3"></span>
+    </div>
+
+    <main class="panel">
+      <div class="badge" id="statusBadge">Focus session running</div>
+
+      <div class="ring-wrap">
+        <svg class="ring" viewBox="0 0 120 120" aria-hidden="true">
+          <circle class="ring-bg" cx="60" cy="60" r="54" />
+          <circle class="ring-fg" id="ringFg" cx="60" cy="60" r="54" />
+        </svg>
+        <div class="ring-label">
+          <div class="time" id="timeLeft">--:--</div>
+          <div class="time-sub">remaining</div>
+        </div>
+      </div>
+
+      <h1><span id="siteName">this site</span> is blocked</h1>
+      <p class="sub" id="message">
+        You're in a focus session. Come back when the timer is done — future
+        you will say thanks.
+      </p>
+
+      <div class="actions">
+        <button class="btn primary" id="newTabBtn">Open a new tab</button>
+      </div>
+
+      <p class="fine" id="fine">Distraction blocking stays on until the session ends.</p>
+    </main>
+
+    <script src="blocked.js"></script>
+  </body>
+</html>
