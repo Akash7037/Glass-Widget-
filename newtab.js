@@ -10,6 +10,8 @@ const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
 const hasExt =
   typeof chrome !== "undefined" && !!(chrome.storage && chrome.storage.local);
+const isExt =
+  typeof chrome !== "undefined" && !!(chrome.runtime && chrome.runtime.id);
 
 /* ---------- storage (falls back to memory when opened as a plain file) --- */
 const mem = {};
