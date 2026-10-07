@@ -16,13 +16,30 @@ const isExt =
 /* ---------- storage (falls back to memory when opened as a plain file) --- */
 const mem = {};
 const store = {
-  async getAll() {
-    if (hasExt) return chrome.storage.local.get(null);
-    return { ...mem };
+  getAll() {
+    if (hasExt) {
+      return new Promise((resolve) => {
+        chrome.storage.local.get(null, (items) => {
+          if (chrome.runtime?.lastError) resolve({ ...mem });
+          else resolve(items || {});
+        });
+      });
+    }
+    return Promise.resolve({ ...mem });
   },
-  async set(obj) {
-    if (hasExt) return chrome.storage.local.set(obj);
+  set(obj) {
     Object.assign(mem, obj);
+    if (hasExt) {
+      return new Promise((resolve) => {
+        chrome.storage.local.set(obj, () => {
+          if (chrome.runtime?.lastError) {
+            console.warn("Storage set warning:", chrome.runtime.lastError);
+          }
+          resolve();
+        });
+      });
+    }
+    return Promise.resolve();
   },
   onChange(cb) {
     if (hasExt)
@@ -1590,6 +1607,19 @@ function initSettings() {
       drawer.hidden = true;
       scrim.hidden = true;
     }, 300);
+    // Explicitly guarantee all settings are flushed to storage on close
+    save({
+      blur: S.blur,
+      opacity: S.opacity,
+      radius: S.radius,
+      liquid: S.liquid,
+      theme: S.theme,
+      accent: S.accent,
+      accent2: S.accent2,
+      timeFormat: S.timeFormat,
+      showSeconds: S.showSeconds,
+      name: S.name
+    });
   };
   $("#settingsBtn").addEventListener("click", open);
   $("#drawerClose").addEventListener("click", close);
@@ -1613,6 +1643,7 @@ function initSettings() {
       setVal("angleRange", S.liquid.lightAngle, `${S.liquid.lightAngle}°`);
     }
   };
+  syncDrawerSliders();
 
   /* glass sliders with live widget feedback on every input frame */
   const bindRange = (id, key, label, transform) => {
@@ -1629,6 +1660,12 @@ function initSettings() {
       out.textContent = transform(S[key]);
       applyAppearance();
       push();
+    });
+    el.addEventListener("change", async () => {
+      S[key] = +el.value;
+      out.textContent = transform(S[key]);
+      applyAppearance();
+      await save({ [key]: S[key] });
     });
   };
   bindRange("blurRange", "blur", "Blur", (v) => `${v}px`);
@@ -1682,6 +1719,12 @@ function initSettings() {
     S.accent2 = shiftHue(accent.value, 45);
     applyAppearance();
     debounce(() => save({ accent: S.accent, accent2: S.accent2 }), 200)();
+  });
+  accent.addEventListener("change", async () => {
+    S.accent = accent.value;
+    S.accent2 = shiftHue(accent.value, 45);
+    applyAppearance();
+    await save({ accent: S.accent, accent2: S.accent2 });
   });
 
   /* background upload */
@@ -1825,6 +1868,16 @@ function initSettings() {
       }
       push();
     });
+    el.addEventListener("change", async () => {
+      const v = isPercent ? (+el.value / 100) : +el.value;
+      S.liquid[key] = v;
+      out.textContent = transform(v);
+      applyAppearance();
+      if (window.LiquidGlass && window.LiquidGlass.updateSettings) {
+        LiquidGlass.updateSettings({ [key]: v });
+      }
+      await save({ liquid: S.liquid });
+    });
   };
 
   bindLiquidRange("refractRange", "refractionScale", (v) => `${v}px`);
@@ -1949,12 +2002,10 @@ async function init() {
     S[k] = { ...DEFAULTS[k], ...(all[k] || {}) };
   if (!Array.isArray(S.order) || !S.order.length) S.order = [...DEFAULTS.order];
 
-  // Calibrate blur and opacity to crystal-clear defaults so widgets look like genuine liquid glass
-  if (S.blur == null || S.blur > 12) S.blur = DEFAULTS.blur;
-  if (S.opacity == null || S.opacity > 16) S.opacity = DEFAULTS.opacity;
-  if (!all.liquid || S.liquid.refractionScale > 45) S.liquid.refractionScale = DEFAULTS.liquid.refractionScale;
-  if (!all.liquid || S.liquid.bezel > 36) S.liquid.bezel = DEFAULTS.liquid.bezel;
-  if (!all.liquid || S.liquid.specularOpacity == null || S.liquid.specularOpacity < 0.4) S.liquid.specularOpacity = DEFAULTS.liquid.specularOpacity;
+  // Ensure valid fallback values if missing
+  if (S.blur == null) S.blur = DEFAULTS.blur;
+  if (S.opacity == null) S.opacity = DEFAULTS.opacity;
+  if (S.radius == null) S.radius = DEFAULTS.radius;
 
   applyAppearance();
   applyBackground();
@@ -2040,6 +2091,23 @@ async function init() {
   matchMedia("(prefers-color-scheme: light)").addEventListener("change", () => {
     if (S.theme === "auto") applyAppearance();
   });
+
+  const flushState = () => {
+    save({
+      blur: S.blur,
+      opacity: S.opacity,
+      radius: S.radius,
+      liquid: S.liquid,
+      theme: S.theme,
+      accent: S.accent,
+      accent2: S.accent2,
+      timeFormat: S.timeFormat,
+      showSeconds: S.showSeconds,
+      name: S.name
+    });
+  };
+  window.addEventListener("pagehide", flushState);
+  window.addEventListener("beforeunload", flushState);
 }
 
 init();
