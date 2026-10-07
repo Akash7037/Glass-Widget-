@@ -20,7 +20,7 @@
 [Widgets & Capabilities](#-widgets--capabilities) •
 [Liquid Glass Physics](#-liquid-glass-physics-architecture) •
 [Controls & Customization](#-controls--customization) •
-[Project Structure](#-project-structure) •
+[Special Thanks & Credits](#-special-thanks--credits) •
 [Privacy & Permissions](#-privacy--security)
 
 </div>
@@ -179,6 +179,18 @@ Glass Widget is built with a **strict privacy-first architecture**:
   - `storage`: Preserves your layout, tasks, notes, and custom preferences.
   - `declarativeNetRequest`: Enables non-intrusive domain redirection for the Focus blocker.
   - `topSites` / `tabs`: Powers the private Web Screen Time analytics widget locally.
+
+---
+
+## 🙏 Special Thanks & Credits
+
+A massive, heartfelt shoutout and credit to:
+
+* **[kube.io](https://kube.io)** for their seminal, ground-breaking research article:  
+  📖 **[Liquid Glass in the Browser: Refraction with CSS and SVG](https://kube.io/blog/liquid-glass-css-svg/)**  
+  Which laid out the foundational mathematics of Snell's Law ray-tracing, Apple Squircle surface normals, dynamic 2D displacement maps, and specular lighting in modern web browsers.
+* **[Z1Code/glass-refraction](https://github.com/Z1Code/glass-refraction)** and the open-source web optics community for pioneering experiments translating physical refractive shaders into accessible CSS and SVG graphics.
+* **Apple Design Team** for the visionary Liquid Glass aesthetic introduced at WWDC 2025.
 
 ---
 
