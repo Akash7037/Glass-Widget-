@@ -1174,11 +1174,15 @@ function initNews() {
 
 /* ---------- Web Screen Time & Top 5 Sites ----------------------------------- */
 async function getWebUsageData() {
-  if (isExt) {
+  if (isExt && chrome.runtime && chrome.runtime.sendMessage) {
     try {
       const res = await new Promise((resolve) => {
         chrome.runtime.sendMessage({ type: "web:usage" }, (resp) => {
-          resolve(resp);
+          if (chrome.runtime && chrome.runtime.lastError) {
+            resolve(null);
+          } else {
+            resolve(resp);
+          }
         });
       });
       if (res && res.ok) return res;
