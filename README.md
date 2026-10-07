@@ -211,5 +211,5 @@ Contributions, feature suggestions, and bug reports are warmly welcomed!
 Distributed under the **MIT License**. See `LICENSE` for more information.
 
 <div align="center">
-  <sub>Crafted with passion for clean design, optical physics, and productivity. Built by <a href="https://github.com/Akash7037">Akash</a>.</sub>
+  <sub>Crafted with passion for clean design, optical physics, and productivity. Vibe Code by <a href="https://github.com/Akash7037">Akash</a>.</sub>
 </div>
