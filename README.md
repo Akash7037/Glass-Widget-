@@ -30,7 +30,6 @@
 ## ✨ Key Features
 
 - ⚡ **Animated Boot Reveal & Zero-FOUC**: Zero flash of unstyled content on page refresh or tab open! Features an ultra-smooth animated splash unveil where a centered search/glass emblem scales down and glides upward directly into the search bar while dissolving the dark curtain to reveal your widgets.
-- 🔍 **Google Lens Visual Search**: Search by image directly from your new tab search bar! Features an interactive Google Lens modal with drag-and-drop file upload, native file picker, paste image link, and clipboard image pasting (`Ctrl + V`), fully routed via native extension tab APIs (`chrome.tabs.create`) with zero active file chooser popup blocking.
 - 📊 **Dedicated Analytics & Focus Studio**: A minimalist, high-contrast analytics dashboard (`analytics.html`) crafted with clean developer aesthetics ("vibe coded", non-glassmorphic, fast & distraction-free) to keep the home page uncluttered.
 - 🏷️ **Smart Website Categorization**: Automatically groups visited domains into intuitive categories:
   - 📚 **Study & Learning** (Coursera, LeetCode, edX, Khan Academy, Wikipedia, .edu portals)
@@ -47,7 +46,6 @@
 - 🎯 **Post-Session Accomplishment Logger**: Prompted immediately after every focus sprint on the New Tab page to log what you accomplished (e.g. solved 3 problems, summarized paper, fixed auth bug).
 - 📜 **Focus Accomplishment History & Management**: Chronological timeline of all completed study sessions with duration pills, accomplishment quotes, category tags, search filters, single item removal, and one-click **Clear History** with confirmation.
 - ➕ **Manual Focus Session Logging & Data Export**: Log offline study sessions manually and export your complete browsing analytics and focus history as JSON anytime.
-- 💎 **Apple Liquid Glass Optics (WWDC 2025)**: Models physical light refraction using Snell's Law ($n_1 \sin\theta_1 = n_2 \sin\theta_2$), dual-layer 3D specular bevels, rainbow prismatic chromatic rim dispersion (cyan & violet), and dynamic cursor sheen tracking.
 - 🌓 **Instant Theme Switcher (Normal Liquid Glass ↔ OLED Dark Mode)**:
   - **Normal Liquid Glass Mode (Default)**: Vibrant cosmic nebula / aurora background, atmospheric ambient lighting blobs, high-translucency glass cards, and luminous cyan/purple accents.
   - **OLED Dark Mode (Optional Feature)**: Pitch-black minimal aesthetic (`#080808`), flat charcoal cards, tight 6px corners, zero distractions, and battery-friendly contrast.
