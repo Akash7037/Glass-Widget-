@@ -83,10 +83,11 @@ function simFocus(msg) {
 
 /* ---------- defaults ------------------------------------------------------ */
 const GRADIENTS = [
-  "linear-gradient(180deg, #090909 0%, #050505 100%)",
-  "linear-gradient(135deg, #121212 0%, #080808 50%, #030303 100%)",
-  "linear-gradient(180deg, #141414 0%, #0a0a0a 100%)",
-  "linear-gradient(135deg, #0f0f0f 0%, #161616 100%)"
+  "linear-gradient(135deg, #0b1120 0%, #1e3a8a 38%, #5b21b6 70%, #0e7490 100%)",
+  "linear-gradient(140deg, #111827 0%, #4c1d95 45%, #9d174d 78%, #f59e0b 130%)",
+  "linear-gradient(135deg, #f8fafc 0%, #dbeafe 40%, #e9d5ff 75%, #ccfbf1 100%)",
+  "linear-gradient(135deg, #042f2e 0%, #0f766e 45%, #155e75 75%, #312e81 100%)",
+  "linear-gradient(180deg, #090909 0%, #050505 100%)"
 ];
 
 const PHOTOS = [
@@ -123,11 +124,11 @@ const DEFAULT_SITES = [
 const DEFAULTS = {
   bg: { type: "gradient", value: GRADIENTS[0] },
   blur: 16,
-  opacity: 8,
-  radius: 6,
+  opacity: 14,
+  radius: 24,
   theme: "dark",
-  accent: "#ffffff",
-  accent2: "#888888",
+  accent: "#7dd3fc",
+  accent2: "#c4b5fd",
   timeFormat: "12h",
   showSeconds: true,
   order: ["clock", "weather", "news", "tasks", "links", "notes", "focus"],
@@ -156,7 +157,7 @@ const DEFAULTS = {
     profile: "convex-squircle",
     refractionScale: 28,
     bezel: 24,
-    specularOpacity: 0.5,
+    specularOpacity: 0.65,
     specularSaturation: 2.0,
     lightAngle: -60
   }
@@ -283,6 +284,17 @@ function applyAppearance() {
       ? "light"
       : "dark";
   document.body.dataset.theme = theme;
+
+  const themeToggleBtn = $("#themeToggleBtn");
+  if (themeToggleBtn) {
+    const isOled = S.theme === "oled";
+    themeToggleBtn.classList.toggle("on", isOled);
+    themeToggleBtn.title = isOled ? "Switch to Normal Liquid Glass mode" : "Switch to Minimal OLED Dark mode";
+    themeToggleBtn.setAttribute("aria-label", themeToggleBtn.title);
+    themeToggleBtn.innerHTML = isOled
+      ? `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>`
+      : `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
+  }
 
   $$("#themeSeg button").forEach((btn) =>
     btn.classList.toggle("on", btn.dataset.theme === S.theme)
@@ -1556,7 +1568,9 @@ function buildPresets() {
   const items = [
     { type: "gradient", value: GRADIENTS[0] },
     { type: "gradient", value: GRADIENTS[1] },
+    { type: "gradient", value: GRADIENTS[2] },
     { type: "gradient", value: GRADIENTS[3] },
+    { type: "gradient", value: GRADIENTS[4] },
     ...PHOTOS.map((u) => ({ type: "image", value: u }))
   ];
   wrap.innerHTML = items
@@ -1745,9 +1759,29 @@ function initSettings() {
   $("#themeSeg").addEventListener("click", async (e) => {
     const b = e.target.closest("button[data-theme]");
     if (!b) return;
+    const prevTheme = S.theme;
     S.theme = b.dataset.theme;
-    await save({ theme: S.theme });
+    if (S.theme === "oled") {
+      S.radius = 6;
+      S.opacity = 8;
+      if (S.bg.type === "gradient" && S.bg.value === GRADIENTS[0]) {
+        S.bg = { type: "gradient", value: GRADIENTS[4] };
+        applyBackground();
+      }
+      toast("Minimal OLED Dark mode active");
+    } else if (prevTheme === "oled") {
+      S.radius = 24;
+      S.opacity = 14;
+      if (S.bg.type === "gradient" && S.bg.value === GRADIENTS[4]) {
+        S.bg = { type: "gradient", value: GRADIENTS[0] };
+        applyBackground();
+      }
+      toast("Normal Liquid Glass mode active");
+    }
+    await save({ theme: S.theme, radius: S.radius, opacity: S.opacity, bg: S.bg });
+    syncDrawerSliders();
     applyAppearance();
+    buildPresets();
   });
 
   const accent = $("#accentColor");
@@ -2352,6 +2386,19 @@ async function init() {
     S[k] = { ...DEFAULTS[k], ...(all[k] || {}) };
   if (!Array.isArray(S.order) || !S.order.length) S.order = [...DEFAULTS.order];
 
+  // Self-heal stored state: ensure normal Liquid Glass is restored unless user explicitly chose OLED
+  if (S.theme !== "oled") {
+    if (S.bg && S.bg.type === "gradient" && (S.bg.value === "linear-gradient(180deg, #090909 0%, #050505 100%)" || S.bg.value.includes("#090909"))) {
+      S.bg = { type: "gradient", value: GRADIENTS[0] };
+    }
+    if (S.radius === 6) S.radius = 24;
+    if (S.opacity === 8) S.opacity = 14;
+    if (S.accent === "#ffffff" && S.accent2 === "#888888") {
+      S.accent = "#7dd3fc";
+      S.accent2 = "#c4b5fd";
+    }
+  }
+
   // Ensure valid fallback values if missing
   if (S.blur == null) S.blur = DEFAULTS.blur;
   if (S.opacity == null) S.opacity = DEFAULTS.opacity;
@@ -2384,6 +2431,35 @@ async function init() {
   initGoogleLens();
   initFocusAccomplishment();
   wireDragDrop();
+
+  const themeToggleBtn = $("#themeToggleBtn");
+  if (themeToggleBtn) {
+    themeToggleBtn.addEventListener("click", async () => {
+      const isOled = S.theme === "oled";
+      if (isOled) {
+        S.theme = "dark";
+        S.radius = 24;
+        S.opacity = 14;
+        if (S.bg.type === "gradient" && S.bg.value === GRADIENTS[4]) {
+          S.bg = { type: "gradient", value: GRADIENTS[0] };
+          applyBackground();
+        }
+        toast("Normal Liquid Glass mode restored");
+      } else {
+        S.theme = "oled";
+        S.radius = 6;
+        S.opacity = 8;
+        if (S.bg.type === "gradient" && S.bg.value === GRADIENTS[0]) {
+          S.bg = { type: "gradient", value: GRADIENTS[4] };
+          applyBackground();
+        }
+        toast("Minimal OLED Dark mode enabled");
+      }
+      await save({ theme: S.theme, radius: S.radius, opacity: S.opacity, bg: S.bg });
+      applyAppearance();
+      buildPresets();
+    });
+  }
 
   $("#sessionStat").textContent = `${S.sessions || 0} focus session${
     (S.sessions || 0) === 1 ? "" : "s"

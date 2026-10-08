@@ -48,6 +48,10 @@
 - 📜 **Focus Accomplishment History & Management**: Chronological timeline of all completed study sessions with duration pills, accomplishment quotes, category tags, search filters, single item removal, and one-click **Clear History** with confirmation.
 - ➕ **Manual Focus Session Logging & Data Export**: Log offline study sessions manually and export your complete browsing analytics and focus history as JSON anytime.
 - 💎 **Apple Liquid Glass Optics (WWDC 2025)**: Models physical light refraction using Snell's Law ($n_1 \sin\theta_1 = n_2 \sin\theta_2$), dual-layer 3D specular bevels, rainbow prismatic chromatic rim dispersion (cyan & violet), and dynamic cursor sheen tracking.
+- 🌓 **Instant Theme Switcher (Normal Liquid Glass ↔ OLED Dark Mode)**:
+  - **Normal Liquid Glass Mode (Default)**: Vibrant cosmic nebula / aurora background, atmospheric ambient lighting blobs, high-translucency glass cards, and luminous cyan/purple accents.
+  - **OLED Dark Mode (Optional Feature)**: Pitch-black minimal aesthetic (`#080808`), flat charcoal cards, tight 6px corners, zero distractions, and battery-friendly contrast.
+  - Dedicated one-click topbar toggle button (`#themeToggleBtn`) and segmented theme controls in Settings.
 - ⚡ **Zero-Dependency Vanilla Architecture**: Built entirely with Vanilla HTML5, CSS3 Custom Properties, and ES2024 JavaScript. Zero npm runtime dependencies, sub-20ms instant cold boot.
 - 🛡️ **Pomodoro Focus Shield with Site Blocker**: Native Chrome `declarativeNetRequest` rule engine dynamically blocking distracting domains during focus sprints.
 - 📐 **Modular Freeform Canvas**: Seamlessly toggle between a structured responsive grid and a freeform drag-and-drop canvas where every widget can be freely positioned and resized (`⌟`).
