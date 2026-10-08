@@ -29,18 +29,27 @@
 
 ## ✨ Key Features
 
+- 🔍 **Google Lens Visual Search**: Search by image directly from your new tab search bar! Features an interactive Google Lens modal with drag-and-drop file upload, native file picker, paste image link, and clipboard image pasting (`Ctrl + V`).
+- 📊 **Dedicated Analytics & Focus Studio**: A minimalist, high-contrast analytics dashboard (`analytics.html`) crafted with clean developer aesthetics ("vibe coded", non-glassmorphic, fast & distraction-free) to keep the home page uncluttered.
+- 🏷️ **Smart Website Categorization**: Automatically groups visited domains into intuitive categories:
+  - 📚 **Study & Learning** (Coursera, LeetCode, edX, Khan Academy, Wikipedia, .edu portals)
+  - 🔬 **Research & Academic** (arXiv, Google Scholar, PubMed, ScienceDirect, ResearchGate)
+  - 💻 **Development & Coding** (GitHub, StackOverflow, MDN, Dev.to, Vercel, AWS)
+  - ⚡ **Productivity & Work** (Notion, Google Docs, Figma, ChatGPT, Claude, Slack)
+  - 🎬 **Entertainment & Media** (YouTube, Netflix, Twitch, Spotify, Disney+)
+  - 💬 **Social Media** (X / Twitter, Reddit, Instagram, Discord, LinkedIn)
+  - 📰 **News & Reading** (Hacker News, TechCrunch, The Verge, BBC)
+  - 🌐 **Other & Utilities** + instant one-click custom category re-assignment!
+- 📈 **Interactive Visual Charts**:
+  - 🍩 **Category Donut / Pie Chart**: SVG-rendered interactive wheel with slice hover highlights, central duration readout, and dynamic percentage legends.
+  - 📊 **Category Time Bar Chart**: Proportional horizontal distribution bars comparing minutes across categories.
+- 🎯 **Post-Session Accomplishment Logger**: Prompted immediately after every focus sprint on the New Tab page to log what you accomplished (e.g. solved 3 problems, summarized paper, fixed auth bug).
+- 📜 **Focus Accomplishment History & Management**: Chronological timeline of all completed study sessions with duration pills, accomplishment quotes, category tags, search filters, single item removal, and one-click **Clear History** with confirmation.
+- ➕ **Manual Focus Session Logging & Data Export**: Log offline study sessions manually and export your complete browsing analytics and focus history as JSON anytime.
 - 💎 **Apple Liquid Glass Optics (WWDC 2025)**: Models physical light refraction using Snell's Law ($n_1 \sin\theta_1 = n_2 \sin\theta_2$), dual-layer 3D specular bevels, rainbow prismatic chromatic rim dispersion (cyan & violet), and dynamic cursor sheen tracking.
-- ⚡ **Zero-Dependency Vanilla Architecture**: Built entirely with Vanilla HTML5, CSS3 Custom Properties, and ES2024 JavaScript. Zero npm runtime dependencies, zero virtual DOM bloat, sub-20ms instant cold boot.
-- 🛰️ **Live Radar News Widget**: Live tech radar fetching headlines directly across three curated categories:
-  - 🤖 **AI & Tech**: Frontiers of deep learning, LLMs, robotics, and hardware.
-  - ⚡ **Vibe Coding**: High-velocity modern dev tools, prompt engineering, and bleeding-edge frameworks.
-  - 🌐 **World Breaking**: Significant international ground-breaking breakthroughs and world alerts.
-- ⏱️ **Web Screen Time & Top Sites Tracker**: Passive, private browsing activity logger tracking daily active web usage with visual progress bars highlighting your Top 5 most-visited domains.
-- 🕒 **Adaptive Clock & Vibe Greetings**: Toggle between 12-Hour (AM/PM) and 24-Hour military time on the fly, toggle live seconds, and enjoy randomized motivational vibe-coding phrases with one-click dice rerolls (`🎲`).
-- 🛡️ **Pomodoro Focus Shield with Site Blocker**: Native Chrome `declarativeNetRequest` rule engine that dynamically blocks distracting domains (YouTube, Instagram, Reddit, etc.) during active focus sessions with a custom motivational blocked screen.
-- 🔖 **Bookmark Manager with Full CRUD**: Effortlessly add, edit (title and URL), reorder, and delete quick-access bookmarks with high-resolution favicon resolution.
+- ⚡ **Zero-Dependency Vanilla Architecture**: Built entirely with Vanilla HTML5, CSS3 Custom Properties, and ES2024 JavaScript. Zero npm runtime dependencies, sub-20ms instant cold boot.
+- 🛡️ **Pomodoro Focus Shield with Site Blocker**: Native Chrome `declarativeNetRequest` rule engine dynamically blocking distracting domains during focus sprints.
 - 📐 **Modular Freeform Canvas**: Seamlessly toggle between a structured responsive grid and a freeform drag-and-drop canvas where every widget can be freely positioned and resized (`⌟`).
-- 🎛️ **Live 60 FPS Customization Drawer**: Real-time slider controls for Blur (0px–40px), Glass Opacity (2%–90%), Corner Radius, Refraction Scale, Bezel Width, Rim Gleam, Rim Saturation, and 3D Light Angle (-180° to 180°).
 
 ---
 
@@ -72,11 +81,14 @@ git clone https://github.com/Akash7037/Glass-Widget-.git
 
 ## 🧩 Widgets & Capabilities
 
-| Widget | Capabilities |
+| Widget / Feature | Capabilities |
 | :--- | :--- |
+| **Google Lens Search** | Native visual reverse-image search integrated into the search bar. Drag & drop images, upload from disk, paste direct image URLs, or paste from clipboard (`Ctrl + V`). |
+| **Analytics & Focus Studio** | Dedicated standalone dashboard (`analytics.html`) featuring minimalist developer styling, auto domain categorization (Study, Research, Coding, etc.), and interactive charts. |
+| **Category Visual Charts** | Interactive SVG Donut / Pie chart with dynamic slice hover readouts and percentages, paired with comparative category duration bar graphs. |
+| **Accomplishment History** | Post-focus completion modal prompting you to log what you accomplished. Searchable history timeline with category badges, duration pills, and one-click Clear History. |
 | **Clock & Greetings** | Crisp liquid glass time display with live seconds, weekday, calendar date, timezone, quick 12H/24H toggle, and randomized inspirational vibe-coding quotes. |
 | **News Radar** | Live real-time headline aggregator featuring 3 categorized feeds (AI Tech, Vibe Coding, World Breaking) with Hacker News live API integration and manual refresh. |
-| **Web Screen Time** | Daily browsing duration tracker with visual percentage bars for your Top 5 most-visited websites. Resets automatically at midnight. |
 | **Weather** | Real-time weather and 5-day forecasts powered by Open-Meteo with zero API key required. Geolocation auto-detection or instant city search with °C / °F switching. |
 | **Today (Tasks)** | Lightweight task organizer featuring instant add, inline completion check, task deletion, and remaining task counter. |
 | **Saved Links** | Full CRUD bookmark manager: add new sites, click the pencil icon (`✎`) to edit existing titles and URLs, delete items, and auto-fetch favicons. |
@@ -156,9 +168,12 @@ Glass-Widget-/
 ├── manifest.json        # Chrome Extension MV3 Manifest
 ├── newtab.html          # Semantic HTML5 layout and widget architecture
 ├── newtab.css           # Hardware-accelerated CSS3 liquid glass design system
-├── newtab.js            # Core application state, widget managers, and reactive UI
+├── newtab.js            # Core application state, Google Lens, Focus accomplishment prompt
+├── analytics.html       # Standalone minimalist Analytics & Focus Studio page
+├── analytics.css        # High-contrast, non-glassmorphic responsive dashboard styles
+├── analytics.js         # Category taxonomy engine, interactive SVG charts & history manager
 ├── liquid.js            # Liquid glass physics engine, Snell's law SDF & ray-tracing
-├── background.js        # Background service worker (screen time logging & site blocking)
+├── background.js        # Service worker (screen time logging, Lens upload, focus blocker)
 ├── blocked.html         # Custom motivational landing page for blocked sites
 ├── blocked.css          # Styling for focus-blocked notification screen
 ├── blocked.js           # Logic and countdown timer for blocked page

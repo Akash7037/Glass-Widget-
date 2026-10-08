@@ -14,14 +14,22 @@
     "alarms",
     "declarativeNetRequest",
     "tabs",
-    "topSites"
+    "topSites",
+    "history"
   ],
   "host_permissions": [
     "<all_urls>"
   ],
   "web_accessible_resources": [
     {
-      "resources": ["blocked.html", "blocked.css", "blocked.js"],
+      "resources": [
+        "blocked.html",
+        "blocked.css",
+        "blocked.js",
+        "analytics.html",
+        "analytics.css",
+        "analytics.js"
+      ],
       "matches": ["<all_urls>"]
     }
   ],

@@ -130,7 +130,7 @@ const DEFAULTS = {
   accent2: "#c4b5fd",
   timeFormat: "12h",
   showSeconds: true,
-  order: ["clock", "weather", "news", "webUsage", "tasks", "links", "notes", "focus"],
+  order: ["clock", "weather", "news", "tasks", "links", "notes", "focus"],
   hidden: [],
   weather: { city: "", unit: "c", lat: null, lon: null },
   links: [
@@ -1359,6 +1359,7 @@ function tickRun() {
 
 async function completeSession() {
   if (!activeFocus) return;
+  const finished = { ...activeFocus };
   activeFocus = null;
   await sendMessage({ type: "focus:stop" });
   S.sessions = (S.sessions || 0) + 1;
@@ -1368,6 +1369,9 @@ async function completeSession() {
   }`;
   showSetupView();
   toast("🎉 Focus session complete — nice work!");
+  if (typeof promptFocusAccomplishment === "function") {
+    promptFocusAccomplishment(finished);
+  }
 }
 
 async function startFocus() {
@@ -1976,6 +1980,296 @@ function downscale(file, maxW, quality) {
   });
 }
 
+/* ---------- Google Lens Integration -------------------------------------------- */
+function initGoogleLens() {
+  const lensBtn = $("#googleLensBtn");
+  const modalBackdrop = $("#lensModalBackdrop");
+  const closeBtn = $("#lensCloseBtn");
+  const dropzone = $("#lensDropzone");
+  const fileInput = $("#lensFileInput");
+  const uploadBtn = $("#lensUploadBtn");
+  const urlForm = $("#lensUrlForm");
+  const urlInput = $("#lensUrlInput");
+  const directForm = $("#lensDirectForm");
+  const directInput = $("#lensDirectInput");
+  const dropBox = $("#lensDropBox");
+  const uploadLoading = $("#lensUploadLoading");
+
+  if (!lensBtn || !modalBackdrop) return;
+
+  function openLensModal() {
+    modalBackdrop.hidden = false;
+    if (urlInput) urlInput.value = "";
+    resetDropzone();
+    setTimeout(() => urlInput?.focus(), 50);
+  }
+
+  function closeLensModal() {
+    modalBackdrop.hidden = true;
+    resetDropzone();
+  }
+
+  function resetDropzone() {
+    if (dropBox) dropBox.hidden = false;
+    if (uploadLoading) uploadLoading.hidden = true;
+    if (dropzone) dropzone.classList.remove("dragover");
+  }
+
+  lensBtn.addEventListener("click", openLensModal);
+  closeBtn?.addEventListener("click", closeLensModal);
+
+  modalBackdrop.addEventListener("click", (e) => {
+    if (e.target === modalBackdrop) closeLensModal();
+  });
+
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !modalBackdrop.hidden) {
+      closeLensModal();
+    }
+  });
+
+  // URL search
+  urlForm?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const url = urlInput ? urlInput.value.trim() : "";
+    if (!url) return;
+    const fullUrl = /^https?:\/\//i.test(url) ? url : "https://" + url;
+    const searchUrl = "https://lens.google.com/uploadbyurl?url=" + encodeURIComponent(fullUrl);
+    window.open(searchUrl, "_blank");
+    closeLensModal();
+  });
+
+  // Dropzone click & file picking
+  uploadBtn?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    fileInput?.click();
+  });
+
+  dropzone?.addEventListener("click", () => {
+    fileInput?.click();
+  });
+
+  fileInput?.addEventListener("change", () => {
+    if (fileInput.files && fileInput.files[0]) {
+      handleLensFile(fileInput.files[0]);
+    }
+  });
+
+  // Drag and drop
+  dropzone?.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dropzone.classList.add("dragover");
+  });
+
+  dropzone?.addEventListener("dragleave", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dropzone.classList.remove("dragover");
+  });
+
+  dropzone?.addEventListener("drop", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dropzone.classList.remove("dragover");
+    if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleLensFile(e.dataTransfer.files[0]);
+    }
+  });
+
+  // Paste image directly while modal is open
+  window.addEventListener("paste", (e) => {
+    if (modalBackdrop.hidden) return;
+    const items = (e.clipboardData || e.originalEvent?.clipboardData)?.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type.indexOf("image") === 0) {
+        const blob = item.getAsFile();
+        if (blob) {
+          handleLensFile(blob);
+          e.preventDefault();
+          return;
+        }
+      }
+    }
+  });
+
+  async function handleLensFile(file) {
+    if (!file || !file.type.startsWith("image/")) {
+      toast("Please choose an image file (PNG, JPG, WebP)");
+      return;
+    }
+
+    if (dropBox) dropBox.hidden = true;
+    if (uploadLoading) uploadLoading.hidden = false;
+
+    try {
+      // 1. Try background upload via chrome.runtime messaging
+      const reader = new FileReader();
+      const base64Promise = new Promise((resolve, reject) => {
+        reader.onload = () => {
+          const res = reader.result;
+          const base64 = typeof res === "string" ? res.split(",")[1] : "";
+          resolve(base64);
+        };
+        reader.onerror = reject;
+      });
+      reader.readAsDataURL(file);
+      const base64Data = await base64Promise;
+
+      const res = await sendMessage({
+        type: "lens:upload",
+        base64Data,
+        mimeType: file.type,
+        fileName: file.name || "image.png"
+      });
+
+      if (res && res.ok) {
+        closeLensModal();
+        toast("Searching with Google Lens…");
+        return;
+      }
+    } catch (err) {
+      console.warn("Background lens upload, falling back to direct form:", err);
+    }
+
+    // 2. Direct form fallback
+    try {
+      if (directInput && directForm) {
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        directInput.files = dt.files;
+        directForm.submit();
+        closeLensModal();
+        toast("Opened Google Lens search in new tab!");
+        return;
+      }
+    } catch (err) {
+      console.warn("Direct form fallback error:", err);
+    }
+
+    // 3. Fallback to lens website
+    window.open("https://lens.google.com/", "_blank");
+    closeLensModal();
+  }
+}
+
+/* ---------- Focus Accomplishment & History Prompt ------------------------------ */
+let activeAccomplishSession = null;
+
+function initFocusAccomplishment() {
+  const backdrop = $("#focusAccomplishBackdrop");
+  const form = $("#focusAccomplishForm");
+  const closeBtn = $("#focusAccomplishClose");
+  const skipBtn = $("#focusAccomplishSkip");
+  const textInput = $("#focusAccomplishText");
+  const catSelector = $("#focusCatSelector");
+
+  if (!backdrop) return;
+
+  catSelector?.addEventListener("click", (e) => {
+    const pill = e.target.closest(".cat-pill");
+    if (!pill) return;
+    $$(".cat-pill", catSelector).forEach((p) => p.classList.remove("on"));
+    pill.classList.add("on");
+  });
+
+  function closeAccomplishModal() {
+    backdrop.hidden = true;
+    activeAccomplishSession = null;
+  }
+
+  closeBtn?.addEventListener("click", closeAccomplishModal);
+  backdrop.addEventListener("click", (e) => {
+    if (e.target === backdrop) closeAccomplishModal();
+  });
+
+  skipBtn?.addEventListener("click", async () => {
+    if (activeAccomplishSession) {
+      await saveSessionAccomplishment(activeAccomplishSession, "", getSelectedCat());
+    }
+    closeAccomplishModal();
+    toast("Focus session logged in History!");
+  });
+
+  form?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const accomplishment = textInput ? textInput.value.trim() : "";
+    const cat = getSelectedCat();
+    if (activeAccomplishSession) {
+      await saveSessionAccomplishment(activeAccomplishSession, accomplishment, cat);
+      toast("Accomplishment saved to Focus History! 🎯");
+    }
+    closeAccomplishModal();
+  });
+
+  function getSelectedCat() {
+    const onPill = $(".cat-pill.on", catSelector);
+    return onPill ? onPill.dataset.cat : "Study";
+  }
+
+  checkPendingBackgroundFocus();
+}
+
+function promptFocusAccomplishment(session) {
+  const backdrop = $("#focusAccomplishBackdrop");
+  const subText = $("#focusAccomplishSub");
+  const textInput = $("#focusAccomplishText");
+  if (!backdrop) return;
+
+  activeAccomplishSession = session || {
+    minutes: 25,
+    startTs: Date.now() - 25 * 60000,
+    sites: S?.focusPref?.selected || []
+  };
+
+  const mins = activeAccomplishSession.minutes || 25;
+  if (subText) {
+    subText.textContent = `${mins} minute${mins === 1 ? "" : "s"} of distraction-free deep work logged.`;
+  }
+  if (textInput) {
+    textInput.value = "";
+  }
+
+  backdrop.hidden = false;
+  setTimeout(() => textInput?.focus(), 60);
+}
+
+async function saveSessionAccomplishment(session, notes, category) {
+  const now = Date.now();
+  const d = new Date();
+  const todayKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+  const all = await store.getAll();
+  const history = Array.isArray(all.focus_history_v1) ? [...all.focus_history_v1] : [];
+
+  const entry = {
+    id: "focus_" + (session.startTs || now),
+    timestamp: now,
+    date: todayKey,
+    durationMinutes: session.minutes || 25,
+    accomplishment: notes || "Deep focus session completed",
+    category: category || "Study",
+    blockedSites: session.sites || []
+  };
+
+  const existingIdx = history.findIndex((h) => h.id === entry.id);
+  if (existingIdx >= 0) {
+    history[existingIdx] = entry;
+  } else {
+    history.unshift(entry);
+  }
+
+  await store.set({ focus_history_v1: history, latest_pending_focus: null });
+}
+
+async function checkPendingBackgroundFocus() {
+  const all = await store.getAll();
+  if (all.latest_pending_focus && all.latest_pending_focus.pendingNote) {
+    promptFocusAccomplishment(all.latest_pending_focus);
+  }
+}
+
 /* ---------- search bar ---------------------------------------------------------- */
 function initSearch() {
   $("#searchForm").addEventListener("submit", (e) => {
@@ -2031,6 +2325,8 @@ async function init() {
   initFocus();
   initSettings();
   initSearch();
+  initGoogleLens();
+  initFocusAccomplishment();
   wireDragDrop();
 
   $("#sessionStat").textContent = `${S.sessions || 0} focus session${

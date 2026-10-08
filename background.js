@@ -46,6 +46,36 @@ async function syncFocus() {
   const focus = await getFocus();
   const active = focus && focus.endTs > Date.now() ? focus : null;
 
+  // If session expired and was not yet recorded, record it to history
+  if (focus && focus.endTs <= Date.now() && !focus.recorded) {
+    try {
+      const histData = await chrome.storage.local.get(['focus_history_v1', 'sessions']);
+      const history = histData.focus_history_v1 || [];
+      const entryId = 'focus_' + focus.startTs;
+      if (!history.some((h) => h.id === entryId)) {
+        const entry = {
+          id: entryId,
+          timestamp: focus.endTs,
+          date: getTodayKey(),
+          durationMinutes: focus.minutes || 25,
+          accomplishment: '',
+          category: 'Study',
+          blockedSites: focus.sites || [],
+          pendingNote: true
+        };
+        history.unshift(entry);
+        const sessions = (histData.sessions || 0) + 1;
+        await chrome.storage.local.set({
+          focus_history_v1: history,
+          sessions,
+          latest_pending_focus: entry
+        });
+      }
+    } catch (e) {
+      console.warn('Failed to record completed focus session in background:', e);
+    }
+  }
+
   const existing = await chrome.declarativeNetRequest.getDynamicRules();
   const removeRuleIds = existing
     .filter((r) => r.id >= RULE_ID_START && r.id <= RULE_ID_END)
@@ -143,13 +173,31 @@ async function recordCurrentTime() {
   try {
     const data = await chrome.storage.local.get(WEB_USAGE_KEY);
     const store = data[WEB_USAGE_KEY] || {};
-    if (store.date !== today) {
-      store.date = today;
-      store.totalSeconds = 0;
-      store.domains = {};
+
+    // Maintain multi-day history
+    if (!store.byDate || typeof store.byDate !== 'object') {
+      store.byDate = {};
+      // Migrate legacy single-day store if present
+      if (store.date && store.domains) {
+        store.byDate[store.date] = {
+          totalSeconds: store.totalSeconds || 0,
+          domains: { ...store.domains }
+        };
+      }
     }
+
+    if (!store.byDate[today]) {
+      store.byDate[today] = { totalSeconds: 0, domains: {} };
+    }
+
+    store.byDate[today].totalSeconds = (store.byDate[today].totalSeconds || 0) + elapsedSec;
+    store.byDate[today].domains[host] = (store.byDate[today].domains[host] || 0) + elapsedSec;
+
+    // Maintain overall all-time aggregates
+    if (!store.domains) store.domains = {};
     store.totalSeconds = (store.totalSeconds || 0) + elapsedSec;
     store.domains[host] = (store.domains[host] || 0) + elapsedSec;
+    store.date = today;
 
     await chrome.storage.local.set({ [WEB_USAGE_KEY]: store });
   } catch (e) {
@@ -206,22 +254,50 @@ if (chrome.windows) {
 // Periodically flush tracked seconds every 15 seconds
 setInterval(recordCurrentTime, 15000);
 
-// Extend message handler for web:usage
-const originalListener = chrome.runtime.onMessage.hasListeners();
+// Extend message handler for web:usage, lens:upload, focus:update_note
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg && msg.type === 'web:usage') {
     (async () => {
       await recordCurrentTime();
       const today = getTodayKey();
       const data = await chrome.storage.local.get(WEB_USAGE_KEY);
-      const store = data[WEB_USAGE_KEY] || { date: today, totalSeconds: 0, domains: {} };
-      if (store.date !== today) {
-        store.totalSeconds = 0;
-        store.domains = {};
+      const store = data[WEB_USAGE_KEY] || { date: today, totalSeconds: 0, domains: {}, byDate: {} };
+      const range = msg.range || 'today'; // 'today', '7d', 'all'
+
+      let activeDomains = {};
+      let totalSeconds = 0;
+
+      if (range === 'today') {
+        const todayData = (store.byDate && store.byDate[today]) || { totalSeconds: 0, domains: {} };
+        activeDomains = todayData.domains || store.domains || {};
+        totalSeconds = todayData.totalSeconds || store.totalSeconds || 0;
+      } else if (range === '7d') {
+        // Aggregate last 7 days
+        const dates = [];
+        const d = new Date();
+        for (let i = 0; i < 7; i++) {
+          const cur = new Date(d);
+          cur.setDate(d.getDate() - i);
+          const k = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}-${String(cur.getDate()).padStart(2, '0')}`;
+          dates.push(k);
+        }
+        for (const dateKey of dates) {
+          const dayEntry = store.byDate && store.byDate[dateKey];
+          if (dayEntry) {
+            totalSeconds += dayEntry.totalSeconds || 0;
+            for (const [h, s] of Object.entries(dayEntry.domains || {})) {
+              activeDomains[h] = (activeDomains[h] || 0) + s;
+            }
+          }
+        }
+      } else {
+        // All-time
+        activeDomains = store.domains || {};
+        totalSeconds = store.totalSeconds || 0;
       }
 
       // Convert domains to sorted list
-      const domainEntries = Object.entries(store.domains || {}).map(([host, sec]) => ({
+      const domainEntries = Object.entries(activeDomains).map(([host, sec]) => ({
         host,
         seconds: sec
       })).sort((a, b) => b.seconds - a.seconds);
@@ -229,7 +305,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       // Top 5 sites
       let top5 = domainEntries.slice(0, 5);
 
-      // If less than 5 domains recorded, augment with chrome.topSites if available
+      // Augment with chrome.topSites if less than 5 domains and requested
       if (top5.length < 5 && chrome.topSites && chrome.topSites.get) {
         try {
           const topChromeSites = await new Promise((res) => chrome.topSites.get(res));
@@ -249,9 +325,79 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 
       sendResponse({
         ok: true,
-        totalSeconds: store.totalSeconds || 0,
-        topSites: top5
+        range,
+        totalSeconds,
+        domains: domainEntries,
+        topSites: top5,
+        byDate: store.byDate || {}
       });
+    })();
+    return true; // async response
+  }
+
+  // Google Lens image file upload endpoint handler
+  if (msg && msg.type === 'lens:upload') {
+    (async () => {
+      try {
+        const byteCharacters = atob(msg.base64Data);
+        const byteNumbers = new Uint8Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const blob = new Blob([byteNumbers], { type: msg.mimeType || 'image/png' });
+        const fd = new FormData();
+        fd.append('encoded_image', blob, msg.fileName || 'image.png');
+
+        const res = await fetch('https://lens.google.com/v3/upload', {
+          method: 'POST',
+          body: fd,
+          redirect: 'manual'
+        });
+
+        const location = res.headers.get('location');
+        if (location) {
+          const tab = await chrome.tabs.create({ url: location });
+          sendResponse({ ok: true, url: location, tabId: tab.id });
+        } else {
+          // If no redirect header was captured, fallback to standard direct form or search
+          sendResponse({ ok: false, error: 'Google Lens redirect not received' });
+        }
+      } catch (err) {
+        sendResponse({ ok: false, error: String(err) });
+      }
+    })();
+    return true; // async response
+  }
+
+  // Focus note update handler
+  if (msg && msg.type === 'focus:update_note') {
+    (async () => {
+      try {
+        const data = await chrome.storage.local.get(['focus_history_v1', 'latest_pending_focus']);
+        let history = data.focus_history_v1 || [];
+        if (msg.id) {
+          const idx = history.findIndex((h) => h.id === msg.id);
+          if (idx >= 0) {
+            history[idx] = {
+              ...history[idx],
+              accomplishment: msg.accomplishment,
+              category: msg.category || history[idx].category,
+              pendingNote: false
+            };
+          }
+        } else if (history.length > 0) {
+          history[0] = {
+            ...history[0],
+            accomplishment: msg.accomplishment,
+            category: msg.category || history[0].category,
+            pendingNote: false
+          };
+        }
+        await chrome.storage.local.set({ focus_history_v1: history, latest_pending_focus: null });
+        sendResponse({ ok: true });
+      } catch (e) {
+        sendResponse({ ok: false, error: String(e) });
+      }
     })();
     return true; // async response
   }

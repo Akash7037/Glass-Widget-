@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Analytics &amp; Focus — Insights</title>
+    <link rel="icon" href="icons/icon48.png" />
+    <link rel="stylesheet" href="analytics.css" />
+  </head>
+  <body>
+    <!-- Navigation Bar -->
+    <header class="top-nav">
+      <div class="nav-left">
+        <a href="newtab.html" class="back-link" title="Return to New Tab">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+          <span>New Tab</span>
+        </a>
+        <div class="nav-divider"></div>
+        <div class="nav-title-group">
+          <h1>Analytics &amp; Focus</h1>
+          <span class="nav-subtitle">Web usage, categorization &amp; session logs</span>
+        </div>
+      </div>
+
+      <div class="nav-right">
+        <!-- Time Range Selector -->
+        <div class="segmented-control" id="rangeSelector">
+          <button type="button" class="segment-btn on" data-range="today">Today</button>
+          <button type="button" class="segment-btn" data-range="7d">7 Days</button>
+          <button type="button" class="segment-btn" data-range="all">All Time</button>
+        </div>
+
+        <div class="nav-actions">
+          <button type="button" class="action-btn" id="refreshBtn" title="Refresh data">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+            </svg>
+            <span>Refresh</span>
+          </button>
+          <button type="button" class="action-btn" id="exportBtn" title="Export JSON">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+            </svg>
+            <span>Export</span>
+          </button>
+          <button type="button" class="action-btn icon-btn" id="themeToggleBtn" title="Toggle theme">
+            <svg id="themeSvg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="page-container">
+      <!-- Metric Cards Row -->
+      <section class="metrics-row">
+        <div class="metric-cell">
+          <span class="metric-label">Active Browsing</span>
+          <div class="metric-number" id="kpiScreenTime">0m</div>
+          <span class="metric-sub" id="kpiScreenTimeMeta">Tracked domains</span>
+        </div>
+
+        <div class="metric-cell focus-cell">
+          <span class="metric-label">Focus Sessions</span>
+          <div class="metric-number" id="kpiFocusTime">0m</div>
+          <span class="metric-sub" id="kpiFocusSessionsMeta">0 sessions logged</span>
+        </div>
+
+        <div class="metric-cell">
+          <span class="metric-label">Deep Work Ratio</span>
+          <div class="metric-number" id="kpiProductiveRatio">0%</div>
+          <span class="metric-sub">Study &amp; research share</span>
+        </div>
+
+        <div class="metric-cell">
+          <span class="metric-label">Top Category</span>
+          <div class="metric-number highlight-cat" id="kpiTopCatName">Study</div>
+          <span class="metric-sub" id="kpiTopCatMeta">0% of activity</span>
+        </div>
+      </section>
+
+      <!-- View Selector Tabs -->
+      <nav class="view-nav" role="tablist">
+        <button type="button" class="view-tab on" id="tabBtnWebsites" role="tab" aria-selected="true">
+          <span>Website Activity</span>
+        </button>
+        <button type="button" class="view-tab" id="tabBtnFocus" role="tab" aria-selected="false">
+          <span>Focus Session History</span>
+          <span class="tab-count" id="focusCountBadge">0</span>
+        </button>
+      </nav>
+
+      <!-- TAB 1: Website Activity & Categorization -->
+      <section class="tab-panel" id="viewWebsites">
+        <!-- Visual Charts Grid -->
+        <div class="charts-grid">
+          <!-- Donut Category Wheel -->
+          <div class="card chart-card">
+            <div class="card-header">
+              <h3>Category Split</h3>
+              <span class="header-sub">Share of browsing time</span>
+            </div>
+            <div class="donut-wrapper">
+              <div class="donut-display">
+                <svg id="donutSvg" viewBox="0 0 220 220" class="donut-svg">
+                  <!-- Injected dynamically in analytics.js -->
+                </svg>
+                <div class="donut-center" id="donutCenterInfo">
+                  <span class="center-label" id="donutCenterLabel">Total</span>
+                  <span class="center-value" id="donutCenterVal">0m</span>
+                </div>
+              </div>
+              <div class="donut-list" id="donutLegend">
+                <!-- Legend list injected dynamically -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Category Duration Bars -->
+          <div class="card chart-card">
+            <div class="card-header">
+              <h3>Time by Category</h3>
+              <span class="header-sub">Minutes logged per category</span>
+            </div>
+            <div class="bars-wrapper" id="barChartContainer">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Websites Table -->
+        <div class="card table-card">
+          <div class="table-bar">
+            <div>
+              <h3>Tracked Websites</h3>
+              <span class="header-sub">Ranked domains with custom category tags</span>
+            </div>
+            <div class="search-input-wrap">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <input type="text" id="siteSearchInput" placeholder="Filter website..." spellcheck="false" />
+            </div>
+          </div>
+
+          <!-- Category Filter Tags -->
+          <div class="filter-strip" id="siteCategoryFilters">
+            <button type="button" class="filter-tag on" data-cat="all">All</button>
+            <button type="button" class="filter-tag" data-cat="study">Study</button>
+            <button type="button" class="filter-tag" data-cat="research">Research</button>
+            <button type="button" class="filter-tag" data-cat="coding">Engineering</button>
+            <button type="button" class="filter-tag" data-cat="productivity">Productivity</button>
+            <button type="button" class="filter-tag" data-cat="entertainment">Media</button>
+            <button type="button" class="filter-tag" data-cat="social">Social</button>
+            <button type="button" class="filter-tag" data-cat="news">News</button>
+            <button type="button" class="filter-tag" data-cat="other">Other</button>
+          </div>
+
+          <!-- Table -->
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th style="width: 44px;">#</th>
+                  <th>Domain</th>
+                  <th>Category</th>
+                  <th style="text-align: right;">Duration</th>
+                  <th style="width: 28%;">Distribution</th>
+                </tr>
+              </thead>
+              <tbody id="sitesTableBody">
+                <!-- Rendered dynamically -->
+              </tbody>
+            </table>
+            <div class="empty-notice" id="sitesEmptyState" hidden>
+              <p>No website visits recorded for this time range.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: Focus Session Accomplishment History -->
+      <section class="tab-panel" id="viewFocus" hidden>
+        <!-- Focus Stats Summary Strip -->
+        <div class="strip-summary">
+          <div class="strip-item">
+            <span class="strip-label">Completed Duration</span>
+            <span class="strip-val" id="fStatTotalTime">0h 0m</span>
+          </div>
+          <div class="strip-item">
+            <span class="strip-label">Average Session</span>
+            <span class="strip-val" id="fStatAvgDuration">25m</span>
+          </div>
+          <div class="strip-item">
+            <span class="strip-label">Primary Discipline</span>
+            <span class="strip-val" id="fStatTopCat">Study</span>
+          </div>
+          <div class="strip-item">
+            <span class="strip-label">Logged Milestones</span>
+            <span class="strip-val" id="fStatSessionsCount">0</span>
+          </div>
+        </div>
+
+        <!-- History Card -->
+        <div class="card history-card">
+          <div class="table-bar">
+            <div>
+              <h3>Session Accomplishments</h3>
+              <span class="header-sub">What you accomplished during each focus block</span>
+            </div>
+            <div class="history-controls">
+              <button type="button" class="btn-solid-sm" id="logManualBtn">
+                <span>+ Log Session</span>
+              </button>
+              <button type="button" class="btn-danger-ghost" id="clearHistoryBtn" title="Clear all history">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+                <span>Clear History</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- History Filter Bar -->
+          <div class="history-filter-strip">
+            <div class="search-input-wrap">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <input type="text" id="historySearchInput" placeholder="Search accomplishment notes..." spellcheck="false" />
+            </div>
+
+            <div class="filter-strip" id="historyCategoryFilters">
+              <button type="button" class="filter-tag on" data-fcat="all">All</button>
+              <button type="button" class="filter-tag" data-fcat="Study">Study</button>
+              <button type="button" class="filter-tag" data-fcat="Research">Research</button>
+              <button type="button" class="filter-tag" data-fcat="Coding">Engineering</button>
+              <button type="button" class="filter-tag" data-fcat="Productivity">Work</button>
+              <button type="button" class="filter-tag" data-fcat="Reading">Reading</button>
+              <button type="button" class="filter-tag" data-fcat="Other">Other</button>
+            </div>
+          </div>
+
+          <!-- History Entries List -->
+          <div class="history-list" id="historyTimeline">
+            <!-- Injected dynamically in analytics.js -->
+          </div>
+
+          <div class="empty-notice" id="historyEmptyState" hidden>
+            <p>No focus sessions recorded yet. Finish a focus block on New Tab to log what you accomplished.</p>
+            <button type="button" class="btn-solid-sm" id="emptyLogManualBtn" style="margin-top:12px;">Log Manual Session</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Modal: Confirmation for Clear History -->
+    <div class="modal-layer" id="clearModalBackdrop" hidden>
+      <div class="modal-surface" role="dialog" aria-modal="true" aria-labelledby="clearModalTitle">
+        <div class="modal-top">
+          <h4 id="clearModalTitle">Clear Focus History</h4>
+          <button type="button" class="modal-x-btn" id="clearModalClose">✕</button>
+        </div>
+        <p class="modal-message">
+          Permanently erase all logged study sessions and accomplishment notes? This cannot be undone.
+        </p>
+        <div class="modal-button-row">
+          <button type="button" class="btn-ghost" id="clearModalCancel">Cancel</button>
+          <button type="button" class="btn-danger-solid" id="clearModalConfirm">Clear History</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Log Manual Session -->
+    <div class="modal-layer" id="manualModalBackdrop" hidden>
+      <div class="modal-surface" role="dialog" aria-modal="true" aria-labelledby="manualModalTitle">
+        <div class="modal-top">
+          <h4 id="manualModalTitle">Log Study Session</h4>
+          <button type="button" class="modal-x-btn" id="manualModalClose">✕</button>
+        </div>
+        <form class="modal-fields" id="manualModalForm" autocomplete="off">
+          <div class="field-split">
+            <div class="field-item">
+              <label for="manualDuration">Duration (min)</label>
+              <input type="number" id="manualDuration" min="1" max="480" value="25" required />
+            </div>
+            <div class="field-item">
+              <label for="manualCategory">Category</label>
+              <select id="manualCategory">
+                <option value="Study">Study</option>
+                <option value="Research">Research</option>
+                <option value="Coding">Engineering</option>
+                <option value="Productivity">Work</option>
+                <option value="Reading">Reading</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field-item">
+            <label for="manualAccomplishment">Accomplished in this session</label>
+            <textarea
+              id="manualAccomplishment"
+              rows="3"
+              placeholder="e.g. Read chapter 4 on distributed consensus, solved 3 LeetCode problems..."
+              required
+            ></textarea>
+          </div>
+
+          <div class="modal-button-row">
+            <button type="button" class="btn-ghost" id="manualModalCancel">Cancel</button>
+            <button type="submit" class="btn-solid-sm" id="manualModalSave">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Category Popover Dropdown -->
+    <div class="popover-dropdown" id="categoryPopover" hidden>
+      <div class="popover-header">Set Category</div>
+      <div class="popover-list" id="popoverOptions">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+
+    <div class="toast-popup" id="studioToast" hidden></div>
+
+    <script src="analytics.js"></script>
+  </body>
+</html>
