@@ -123,6 +123,7 @@ const DEFAULT_SITES = [
 
 const DEFAULTS = {
   bg: { type: "gradient", value: GRADIENTS[0] },
+  brightness: 100,
   blur: 16,
   opacity: 14,
   radius: 24,
@@ -253,6 +254,8 @@ function applyAppearance() {
   root.classList.toggle("liquid", isLiquid);
   root.classList.toggle("no-liquid", !isLiquid);
 
+  const br = S.brightness != null ? S.brightness : 100;
+  root.style.setProperty("--bg-brightness", String(br / 100));
   root.style.setProperty("--glass-blur", `${b}px`);
   root.style.setProperty("--glass-a", String(a));
   root.style.setProperty("--radius", `${r}px`);
@@ -1661,6 +1664,7 @@ function initSettings() {
     }, 300);
     // Explicitly guarantee all settings are flushed to storage on close
     save({
+      brightness: S.brightness,
       blur: S.blur,
       opacity: S.opacity,
       radius: S.radius,
@@ -1684,6 +1688,7 @@ function initSettings() {
       if (el) el.value = val;
       if (out && text) out.textContent = text;
     };
+    setVal("brightnessRange", S.brightness != null ? S.brightness : 100, `${S.brightness != null ? S.brightness : 100}%`);
     setVal("blurRange", S.blur, `${S.blur}px`);
     setVal("opacityRange", S.opacity, `${S.opacity}%`);
     setVal("radiusRange", S.radius, `${S.radius}px`);
@@ -1720,6 +1725,7 @@ function initSettings() {
       await save({ [key]: S[key] });
     });
   };
+  bindRange("brightnessRange", "brightness", "Brightness", (v) => `${v}%`);
   bindRange("blurRange", "blur", "Blur", (v) => `${v}px`);
   bindRange("opacityRange", "opacity", "Opacity", (v) => `${v}%`);
   bindRange("radiusRange", "radius", "Radius", (v) => `${v}px`);
@@ -2400,6 +2406,7 @@ async function init() {
   }
 
   // Ensure valid fallback values if missing
+  if (S.brightness == null) S.brightness = DEFAULTS.brightness;
   if (S.blur == null) S.blur = DEFAULTS.blur;
   if (S.opacity == null) S.opacity = DEFAULTS.opacity;
   if (S.radius == null) S.radius = DEFAULTS.radius;
@@ -2522,6 +2529,7 @@ async function init() {
 
   const flushState = () => {
     save({
+      brightness: S.brightness,
       blur: S.blur,
       opacity: S.opacity,
       radius: S.radius,

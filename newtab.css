@@ -20,19 +20,20 @@
 
   /* normal dark glass theme (defaults) */
   --bg: #070b14;
-  --text: #f2f5fa;
-  --muted: rgba(233, 238, 247, 0.62);
-  --faint: rgba(233, 238, 247, 0.38);
+  --text: #ffffff;
+  --muted: rgba(255, 255, 255, 0.85);
+  --faint: rgba(255, 255, 255, 0.68);
   --tint: 15 23 42;
   --field: rgba(255, 255, 255, 0.08);
-  --line: rgba(255, 255, 255, 0.15);
-  --glass-border: rgba(255, 255, 255, 0.16);
-  --pill-on: rgba(255, 255, 255, 0.22);
+  --line: rgba(255, 255, 255, 0.18);
+  --glass-border: rgba(255, 255, 255, 0.22);
+  --pill-on: rgba(255, 255, 255, 0.25);
   --shadow: 0 26px 60px -30px rgba(0, 0, 0, 0.65), 0 4px 16px -8px rgba(0, 0, 0, 0.4);
   --card-sheen: none;
   --spec-hi: rgba(255, 255, 255, 0.7);
-  --veil: linear-gradient(180deg, rgba(4, 8, 16, 0.28) 0%, rgba(4, 8, 16, 0.12) 45%, rgba(4, 8, 16, 0.42) 100%);
-  --veil-photo: linear-gradient(180deg, rgba(4, 8, 16, 0.45) 0%, rgba(4, 8, 16, 0.28) 45%, rgba(4, 8, 16, 0.55) 100%);
+  --bg-brightness: 1;
+  --veil: rgba(0, 0, 0, 0);
+  --veil-photo: rgba(0, 0, 0, 0);
 }
 
 /* Feature Mode: Minimal Pitch-Black OLED Dark */
@@ -230,7 +231,8 @@ a {
 
 .bg-layer {
   z-index: 0;
-  transition: background 0.5s ease, background-image 0.5s ease;
+  transition: background 0.5s ease, background-image 0.5s ease, filter 0.15s ease;
+  filter: brightness(var(--bg-brightness, 1));
 }
 
 .blobs {
@@ -419,11 +421,12 @@ body.has-photo .veil {
   background: 
     linear-gradient(
       calc(var(--glass-angle, -60deg) + 90deg),
-      rgba(255, 255, 255, calc(var(--glass-specular, 0.65) * 0.22)) 0%,
-      rgba(255, 255, 255, 0.04) 28%,
-      rgba(255, 255, 255, 0.01) 60%,
-      rgba(0, 0, 0, 0.08) 100%
+      rgba(255, 255, 255, calc(var(--glass-specular, 0.65) * 0.28 + 0.04)) 0%,
+      rgba(255, 255, 255, 0.06) 28%,
+      rgba(255, 255, 255, 0.02) 60%,
+      rgba(255, 255, 255, 0.04) 100%
     ),
+    rgba(255, 255, 255, calc(var(--glass-a, 0.08) * 0.3)),
     rgb(var(--tint, 15 23 42) / var(--glass-a, 0.08));
   
   border: 1px solid rgba(255, 255, 255, calc(var(--glass-specular, 0.65) * 0.55 + 0.12));
@@ -440,6 +443,7 @@ body.has-photo .veil {
     0 24px 52px -14px rgba(0, 0, 0, 0.6),
     0 6px 18px -4px rgba(0, 0, 0, 0.35);
 
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
   transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.2s var(--ease);
   overflow: hidden;
 }
