@@ -5,9 +5,81 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>New Tab</title>
     <link rel="icon" href="icons/icon48.png" />
+    <style>
+      /* Zero-FOUC instant splash loader */
+      html, body {
+        background: #080808 !important;
+        margin: 0;
+        padding: 0;
+      }
+      .splash-curtain {
+        position: fixed;
+        inset: 0;
+        background: #080808;
+        z-index: 999999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        pointer-events: all;
+        transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.4s;
+      }
+      .splash-curtain.revealing {
+        opacity: 0;
+        pointer-events: none;
+      }
+      .splash-curtain.hidden {
+        display: none !important;
+      }
+      .splash-center {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .splash-icon {
+        width: 48px;
+        height: 48px;
+        display: grid;
+        place-items: center;
+        color: #f4f4f5;
+        z-index: 2;
+        transform-origin: center center;
+        transition: transform 0.42s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease;
+      }
+      .splash-glow {
+        position: absolute;
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.08) 0%, transparent 70%);
+        animation: splashBreathe 1.8s ease-in-out infinite alternate;
+        z-index: 1;
+      }
+      @keyframes splashBreathe {
+        from { transform: scale(0.85); opacity: 0.3; }
+        to { transform: scale(1.15); opacity: 0.85; }
+      }
+      body.is-booting #appWrap {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+    </style>
     <link rel="stylesheet" href="newtab.css" />
   </head>
-  <body data-theme="dark">
+  <body data-theme="dark" class="is-booting">
+    <!-- Boot Splash Reveal Screen -->
+    <div class="splash-curtain" id="splashCurtain" aria-hidden="true">
+      <div class="splash-center">
+        <div class="splash-icon" id="splashIcon">
+          <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="7"/>
+            <path d="m21 21-4.35-4.35"/>
+          </svg>
+        </div>
+        <div class="splash-glow"></div>
+      </div>
+    </div>
+
     <!-- background layers -->
     <div class="bg-layer" id="bgLayer" aria-hidden="true"></div>
     <div class="blobs" aria-hidden="true">
@@ -17,15 +89,16 @@
     </div>
     <div class="veil" aria-hidden="true"></div>
 
-    <!-- top bar -->
-    <header class="topbar">
-      <form class="search" id="searchForm" autocomplete="off">
-        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-          <path
-            fill="currentColor"
-            d="M10 2a8 8 0 105.29 14.03l4.34 4.34 1.41-1.41-4.34-4.34A8 8 0 0010 2zm0 2a6 6 0 110 12 6 6 0 010-12z"
-          />
-        </svg>
+    <div class="app-wrap" id="appWrap">
+      <!-- top bar -->
+      <header class="topbar">
+        <form class="search" id="searchForm" autocomplete="off">
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" class="search-glass-icon" id="searchGlassIcon">
+            <path
+              fill="currentColor"
+              d="M10 2a8 8 0 105.29 14.03l4.34 4.34 1.41-1.41-4.34-4.34A8 8 0 0010 2zm0 2a6 6 0 110 12 6 6 0 010-12z"
+            />
+          </svg>
         <input
           id="searchInput"
           type="text"
@@ -297,6 +370,7 @@
       <span class="foot-sep">·</span>
       <span class="kbd-hint"><kbd>/</kbd> search &nbsp;·&nbsp; <kbd>E</kbd> edit layout &nbsp;·&nbsp; <kbd>Esc</kbd> close</span>
     </footer>
+    </div><!-- /appWrap -->
 
     <!-- settings drawer -->
     <div class="scrim" id="scrim" hidden></div>
@@ -534,18 +608,6 @@
         </form>
       </div>
     </div>
-
-    <!-- Hidden direct form for Google Lens upload fallback -->
-    <form
-      id="lensDirectForm"
-      action="https://lens.google.com/v3/upload"
-      method="POST"
-      enctype="multipart/form-data"
-      target="_blank"
-      hidden
-    >
-      <input type="file" name="encoded_image" id="lensDirectInput" />
-    </form>
 
     <!-- Focus Accomplishment Modal -->
     <div class="focus-accomplish-backdrop" id="focusAccomplishBackdrop" hidden>

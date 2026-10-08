@@ -29,7 +29,8 @@
 
 ## ✨ Key Features
 
-- 🔍 **Google Lens Visual Search**: Search by image directly from your new tab search bar! Features an interactive Google Lens modal with drag-and-drop file upload, native file picker, paste image link, and clipboard image pasting (`Ctrl + V`).
+- ⚡ **Animated Boot Reveal & Zero-FOUC**: Zero flash of unstyled content on page refresh or tab open! Features an ultra-smooth animated splash unveil where a centered search/glass emblem scales down and glides upward directly into the search bar while dissolving the dark curtain to reveal your widgets.
+- 🔍 **Google Lens Visual Search**: Search by image directly from your new tab search bar! Features an interactive Google Lens modal with drag-and-drop file upload, native file picker, paste image link, and clipboard image pasting (`Ctrl + V`), fully routed via native extension tab APIs (`chrome.tabs.create`) with zero active file chooser popup blocking.
 - 📊 **Dedicated Analytics & Focus Studio**: A minimalist, high-contrast analytics dashboard (`analytics.html`) crafted with clean developer aesthetics ("vibe coded", non-glassmorphic, fast & distraction-free) to keep the home page uncluttered.
 - 🏷️ **Smart Website Categorization**: Automatically groups visited domains into intuitive categories:
   - 📚 **Study & Learning** (Coursera, LeetCode, edX, Khan Academy, Wikipedia, .edu portals)

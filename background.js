@@ -351,22 +351,33 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         const res = await fetch('https://lens.google.com/v3/upload', {
           method: 'POST',
           body: fd,
-          redirect: 'manual'
+          redirect: 'follow'
         });
 
-        const location = res.headers.get('location');
-        if (location) {
-          const tab = await chrome.tabs.create({ url: location });
-          sendResponse({ ok: true, url: location, tabId: tab.id });
-        } else {
-          // If no redirect header was captured, fallback to standard direct form or search
-          sendResponse({ ok: false, error: 'Google Lens redirect not received' });
-        }
+        const destUrl = res.url && res.url.includes('lens.google.com') ? res.url : 'https://lens.google.com/';
+        const tab = await chrome.tabs.create({ url: destUrl });
+        sendResponse({ ok: true, url: destUrl, tabId: tab.id });
       } catch (err) {
-        sendResponse({ ok: false, error: String(err) });
+        // Safe fallback to Lens homepage via chrome.tabs.create (immune to file chooser blocker)
+        try {
+          const tab = await chrome.tabs.create({ url: 'https://lens.google.com/' });
+          sendResponse({ ok: true, url: 'https://lens.google.com/', tabId: tab.id });
+        } catch (tabErr) {
+          sendResponse({ ok: false, error: String(tabErr) });
+        }
       }
     })();
     return true; // async response
+  }
+
+  // Safe tab creation message handler
+  if (msg && msg.type === 'tabs:create') {
+    if (msg.url) {
+      chrome.tabs.create({ url: msg.url })
+        .then((tab) => sendResponse({ ok: true, tabId: tab.id }))
+        .catch((err) => sendResponse({ ok: false, error: String(err) }));
+      return true;
+    }
   }
 
   // Focus note update handler

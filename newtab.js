@@ -83,10 +83,10 @@ function simFocus(msg) {
 
 /* ---------- defaults ------------------------------------------------------ */
 const GRADIENTS = [
-  "linear-gradient(135deg, #0b1120 0%, #1e3a8a 38%, #5b21b6 70%, #0e7490 100%)",
-  "linear-gradient(140deg, #111827 0%, #4c1d95 45%, #9d174d 78%, #f59e0b 130%)",
-  "linear-gradient(135deg, #f8fafc 0%, #dbeafe 40%, #e9d5ff 75%, #ccfbf1 100%)",
-  "linear-gradient(135deg, #042f2e 0%, #0f766e 45%, #155e75 75%, #312e81 100%)"
+  "linear-gradient(180deg, #090909 0%, #050505 100%)",
+  "linear-gradient(135deg, #121212 0%, #080808 50%, #030303 100%)",
+  "linear-gradient(180deg, #141414 0%, #0a0a0a 100%)",
+  "linear-gradient(135deg, #0f0f0f 0%, #161616 100%)"
 ];
 
 const PHOTOS = [
@@ -122,12 +122,12 @@ const DEFAULT_SITES = [
 
 const DEFAULTS = {
   bg: { type: "gradient", value: GRADIENTS[0] },
-  blur: 8,
+  blur: 16,
   opacity: 8,
-  radius: 26,
+  radius: 6,
   theme: "dark",
-  accent: "#7dd3fc",
-  accent2: "#c4b5fd",
+  accent: "#ffffff",
+  accent2: "#888888",
   timeFormat: "12h",
   showSeconds: true,
   order: ["clock", "weather", "news", "tasks", "links", "notes", "focus"],
@@ -156,11 +156,23 @@ const DEFAULTS = {
     profile: "convex-squircle",
     refractionScale: 28,
     bezel: 24,
-    specularOpacity: 0.65,
-    specularSaturation: 6.0,
+    specularOpacity: 0.5,
+    specularSaturation: 2.0,
     lightAngle: -60
   }
 };
+
+function openExternalTab(url) {
+  if (typeof chrome !== "undefined" && chrome.tabs && chrome.tabs.create) {
+    chrome.tabs.create({ url });
+  } else if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.sendMessage) {
+    chrome.runtime.sendMessage({ type: "tabs:create", url });
+  } else {
+    setTimeout(() => {
+      window.open(url, "_blank");
+    }, 50);
+  }
+}
 
 let S = JSON.parse(JSON.stringify(DEFAULTS));
 let activeFocus = null; // running session: {sites, minutes, startTs, endTs}
@@ -703,7 +715,7 @@ async function loadWeather() {
   if (!w.lat || !w.lon) {
     $("#wTemp").textContent = "--°";
     $("#wCity").textContent = "No location set";
-    $("#wIcon").textContent = "📍";
+    $("#wIcon").textContent = "•";
     $("#wMeta").innerHTML = "";
     $("#wForecast").innerHTML = "";
     weatherStatus(
@@ -714,7 +726,16 @@ async function loadWeather() {
     return;
   }
 
-  weatherStatus("Loading…");
+  // Fast hydrate from cache to eliminate placeholder jump
+  if (S.cached_weather_v1) {
+    const cw = S.cached_weather_v1;
+    if (cw.icon) $("#wIcon").textContent = cw.icon;
+    if (cw.temp) $("#wTemp").textContent = cw.temp;
+    if (cw.city) $("#wCity").textContent = cw.city;
+    if (cw.metaHtml) $("#wMeta").innerHTML = cw.metaHtml;
+    if (cw.forecastHtml) $("#wForecast").innerHTML = cw.forecastHtml;
+  }
+
   const unit =
     w.unit === "f"
       ? "&temperature_unit=fahrenheit&wind_speed_unit=mph"
@@ -733,14 +754,15 @@ async function loadWeather() {
     $("#wIcon").textContent = icon;
     $("#wTemp").textContent = `${Math.round(c.temperature_2m)}°`;
     $("#wCity").textContent = w.city || "Current location";
-    $("#wMeta").innerHTML = [
+    const metaHtml = [
       `${label}`,
       `Feels ${Math.round(c.apparent_temperature)}°`,
-      `💧 ${c.relative_humidity_2m}%`,
-      `💨 ${Math.round(c.wind_speed_10m)}`
+      `Humidity ${c.relative_humidity_2m}%`,
+      `Wind ${Math.round(c.wind_speed_10m)}`
     ]
       .map((t) => `<span>${t}</span>`)
       .join("");
+    $("#wMeta").innerHTML = metaHtml;
 
     const days = data.daily.time.map((t, i) => {
       const d = new Date(t + "T12:00:00");
@@ -751,13 +773,25 @@ async function loadWeather() {
         weekday: "short"
       })}<span class="d-ico">${dIcon}</span><b>${max}°/${min}°</b></div>`;
     });
-    $("#wForecast").innerHTML = days.join("");
+    const forecastHtml = days.join("");
+    $("#wForecast").innerHTML = forecastHtml;
     weatherStatus(
       `Updated ${new Date().toLocaleTimeString([], {
         hour: "2-digit",
         minute: "2-digit"
       })}`
     );
+
+    // Persist cache
+    save({
+      cached_weather_v1: {
+        icon,
+        temp: `${Math.round(c.temperature_2m)}°`,
+        city: w.city || "Current location",
+        metaHtml,
+        forecastHtml
+      }
+    });
   } catch (err) {
     weatherStatus(`Couldn't load weather (${err.message}). Retry later.`);
   }
@@ -898,7 +932,7 @@ function renderLinks() {
           )}&sz=64" alt="">`
         : "";
       return `<div class="link" data-i="${i}" title="${esc(l.url)}">
-          <button class="link-edit-btn" title="Edit link" aria-label="Edit link">✏️</button>
+          <button class="link-edit-btn" title="Edit link" aria-label="Edit link"><svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 000-1.41l-2.34-2.34a1 1 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
           <a href="${esc(l.url)}" target="_self" style="display:flex;flex-direction:column;align-items:center;gap:9px;text-decoration:none;color:inherit;width:100%;">
             <span class="link-ico">${letter}${ico}</span>
             <span class="link-name"></span>
@@ -1990,8 +2024,6 @@ function initGoogleLens() {
   const uploadBtn = $("#lensUploadBtn");
   const urlForm = $("#lensUrlForm");
   const urlInput = $("#lensUrlInput");
-  const directForm = $("#lensDirectForm");
-  const directInput = $("#lensDirectInput");
   const dropBox = $("#lensDropBox");
   const uploadLoading = $("#lensUploadLoading");
 
@@ -2035,7 +2067,7 @@ function initGoogleLens() {
     if (!url) return;
     const fullUrl = /^https?:\/\//i.test(url) ? url : "https://" + url;
     const searchUrl = "https://lens.google.com/uploadbyurl?url=" + encodeURIComponent(fullUrl);
-    window.open(searchUrl, "_blank");
+    openExternalTab(searchUrl);
     closeLensModal();
   });
 
@@ -2051,7 +2083,10 @@ function initGoogleLens() {
 
   fileInput?.addEventListener("change", () => {
     if (fileInput.files && fileInput.files[0]) {
-      handleLensFile(fileInput.files[0]);
+      const file = fileInput.files[0];
+      // Immediately reset value to clear active file chooser state in Chromium
+      fileInput.value = "";
+      handleLensFile(file);
     }
   });
 
@@ -2130,27 +2165,13 @@ function initGoogleLens() {
         return;
       }
     } catch (err) {
-      console.warn("Background lens upload, falling back to direct form:", err);
+      console.warn("Background lens upload exception:", err);
     }
 
-    // 2. Direct form fallback
-    try {
-      if (directInput && directForm) {
-        const dt = new DataTransfer();
-        dt.items.add(file);
-        directInput.files = dt.files;
-        directForm.submit();
-        closeLensModal();
-        toast("Opened Google Lens search in new tab!");
-        return;
-      }
-    } catch (err) {
-      console.warn("Direct form fallback error:", err);
-    }
-
-    // 3. Fallback to lens website
-    window.open("https://lens.google.com/", "_blank");
+    // 2. Safe fallback via openExternalTab (uses chrome.tabs.create, immune to active file chooser blocker)
+    openExternalTab("https://lens.google.com/");
     closeLensModal();
+    toast("Opening Google Lens search…");
   }
 }
 
@@ -2288,8 +2309,43 @@ function initSearch() {
   });
 }
 
+/* ---------- splash boot reveal animation ---------------------------------------- */
+function dismissSplash() {
+  const curtain = $("#splashCurtain");
+  const splashIcon = $("#splashIcon");
+  const targetSvg = $("#searchGlassIcon") || $(".search svg");
+
+  if (!curtain) {
+    document.body.classList.remove("is-booting");
+    return;
+  }
+
+  if (splashIcon && targetSvg) {
+    const targetRect = targetSvg.getBoundingClientRect();
+    const currentRect = splashIcon.getBoundingClientRect();
+    const dx = (targetRect.left + targetRect.width / 2) - (currentRect.left + currentRect.width / 2);
+    const dy = (targetRect.top + targetRect.height / 2) - (currentRect.top + currentRect.height / 2);
+
+    splashIcon.style.transform = `translate(${dx}px, ${dy}px) scale(0.38)`;
+    splashIcon.style.opacity = "0.2";
+  } else if (splashIcon) {
+    splashIcon.style.transform = "translateY(-35vh) scale(0.45)";
+    splashIcon.style.opacity = "0";
+  }
+
+  curtain.classList.add("revealing");
+  document.body.classList.remove("is-booting");
+
+  setTimeout(() => {
+    curtain.classList.add("hidden");
+  }, 440);
+}
+
 /* ---------- init --------------------------------------------------------------- */
 async function init() {
+  // Synchronous fast clock paint to eliminate initial time flicker
+  tickClock();
+
   const all = await store.getAll();
   S = { ...JSON.parse(JSON.stringify(DEFAULTS)), ...all };
   for (const k of ["weather", "focusPref", "bg", "liquid", "sizes"])
@@ -2404,6 +2460,11 @@ async function init() {
   };
   window.addEventListener("pagehide", flushState);
   window.addEventListener("beforeunload", flushState);
+
+  // Smooth reveal sequence: glide splash icon into search bar and unveil dashboard
+  requestAnimationFrame(() => {
+    setTimeout(dismissSplash, 80);
+  });
 }
 
 init();
