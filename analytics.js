@@ -196,6 +196,17 @@ const MOCK_FOCUS_HISTORY = [
   }
 ];
 
+/* ---------- Host Filtering & Ignored Domains ----------------------------- */
+function isIgnoredHost(host) {
+  if (!host) return true;
+  host = host.toLowerCase().replace(/^www\./, "");
+  // Exclude Google search / home engine portals (google.com, google.co.in, google.ca, etc.)
+  // because search tabs frequently idle in the background and pollute analytics
+  if (host === "google.com" || /^google\.[a-z]{2,}(\.[a-z]{2})?$/.test(host)) return true;
+  if (host === "localhost" || host === "127.0.0.1" || host.includes("newtab") || host.endsWith(".local")) return true;
+  return false;
+}
+
 /* ---------- Categorizer --------------------------------------------------- */
 function categorizeDomain(host) {
   if (!host) return "other";
@@ -281,18 +292,24 @@ async function loadData() {
       });
 
       if (resp && resp.ok) {
+        const cleanDomains = (resp.domains || []).filter((d) => !isIgnoredHost(d.host));
+        const totalCleanSec = cleanDomains.reduce((acc, cur) => acc + (cur.seconds || 0), 0);
         webUsageData = {
-          totalSeconds: resp.totalSeconds || 0,
-          domains: resp.domains || []
+          totalSeconds: totalCleanSec,
+          domains: cleanDomains
         };
       } else {
         const store = stored.web_usage_v1 || {};
-        const domainEntries = Object.entries(store.domains || {}).map(([host, seconds]) => ({
-          host,
-          seconds
-        })).sort((a, b) => b.seconds - a.seconds);
+        const domainEntries = Object.entries(store.domains || {})
+          .filter(([host]) => !isIgnoredHost(host))
+          .map(([host, seconds]) => ({
+            host,
+            seconds
+          }))
+          .sort((a, b) => b.seconds - a.seconds);
+        const totalCleanSec = domainEntries.reduce((acc, cur) => acc + (cur.seconds || 0), 0);
         webUsageData = {
-          totalSeconds: store.totalSeconds || 0,
+          totalSeconds: totalCleanSec,
           domains: domainEntries
         };
       }
@@ -503,7 +520,7 @@ function renderSitesTable() {
   tbody.innerHTML = "";
 
   const totalSec = webUsageData.totalSeconds || 1;
-  let domains = [...webUsageData.domains];
+  let domains = (webUsageData.domains || []).filter((d) => !isIgnoredHost(d.host));
 
   if (siteSearchQuery) {
     const q = siteSearchQuery.toLowerCase();

@@ -148,12 +148,23 @@ function getTodayKey() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+function isIgnoredHost(host) {
+  if (!host) return true;
+  host = host.toLowerCase().replace(/^www\./, '');
+  // Ignore Google search & home portal (e.g. google.com, google.co.in, google.ca, etc.)
+  // while preserving specific subdomains like scholar.google.com, docs.google.com
+  if (host === 'google.com' || /^google\.[a-z]{2,}(\.[a-z]{2})?$/.test(host)) return true;
+  // Ignore local & internal extension/browser tabs
+  if (host === 'localhost' || host === '127.0.0.1' || host.includes('newtab') || host.endsWith('.local')) return true;
+  return false;
+}
+
 function extractHost(url) {
   try {
     if (!url || !url.startsWith('http')) return null;
     const u = new URL(url);
-    const host = u.hostname.replace(/^www\./, '');
-    if (!host || host.includes('newtab') || host.includes('localhost') || host === '127.0.0.1') return null;
+    const host = u.hostname.replace(/^www\./, '').toLowerCase();
+    if (isIgnoredHost(host)) return null;
     return host;
   } catch (e) {
     return null;
@@ -261,16 +272,44 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       await recordCurrentTime();
       const today = getTodayKey();
       const data = await chrome.storage.local.get(WEB_USAGE_KEY);
-      const store = data[WEB_USAGE_KEY] || { date: today, totalSeconds: 0, domains: {}, byDate: {} };
+      let store = data[WEB_USAGE_KEY] || { date: today, totalSeconds: 0, domains: {}, byDate: {} };
       const range = msg.range || 'today'; // 'today', '7d', 'all'
 
+      // Auto-prune any historical google.com or search portal records from store
+      let pruned = false;
+      if (store.domains) {
+        for (const h of Object.keys(store.domains)) {
+          if (isIgnoredHost(h)) {
+            const sec = store.domains[h] || 0;
+            store.totalSeconds = Math.max(0, (store.totalSeconds || 0) - sec);
+            delete store.domains[h];
+            pruned = true;
+          }
+        }
+      }
+      if (store.byDate && typeof store.byDate === 'object') {
+        for (const dayEntry of Object.values(store.byDate)) {
+          if (dayEntry && dayEntry.domains) {
+            for (const h of Object.keys(dayEntry.domains)) {
+              if (isIgnoredHost(h)) {
+                const sec = dayEntry.domains[h] || 0;
+                dayEntry.totalSeconds = Math.max(0, (dayEntry.totalSeconds || 0) - sec);
+                delete dayEntry.domains[h];
+                pruned = true;
+              }
+            }
+          }
+        }
+      }
+      if (pruned) {
+        chrome.storage.local.set({ [WEB_USAGE_KEY]: store }).catch(() => {});
+      }
+
       let activeDomains = {};
-      let totalSeconds = 0;
 
       if (range === 'today') {
         const todayData = (store.byDate && store.byDate[today]) || { totalSeconds: 0, domains: {} };
         activeDomains = todayData.domains || store.domains || {};
-        totalSeconds = todayData.totalSeconds || store.totalSeconds || 0;
       } else if (range === '7d') {
         // Aggregate last 7 days
         const dates = [];
@@ -284,7 +323,6 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         for (const dateKey of dates) {
           const dayEntry = store.byDate && store.byDate[dateKey];
           if (dayEntry) {
-            totalSeconds += dayEntry.totalSeconds || 0;
             for (const [h, s] of Object.entries(dayEntry.domains || {})) {
               activeDomains[h] = (activeDomains[h] || 0) + s;
             }
@@ -293,14 +331,19 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       } else {
         // All-time
         activeDomains = store.domains || {};
-        totalSeconds = store.totalSeconds || 0;
       }
 
-      // Convert domains to sorted list
-      const domainEntries = Object.entries(activeDomains).map(([host, sec]) => ({
-        host,
-        seconds: sec
-      })).sort((a, b) => b.seconds - a.seconds);
+      // Convert domains to sorted list (filtering out any ignored hosts)
+      const domainEntries = Object.entries(activeDomains)
+        .filter(([host]) => !isIgnoredHost(host))
+        .map(([host, sec]) => ({
+          host,
+          seconds: sec
+        }))
+        .sort((a, b) => b.seconds - a.seconds);
+
+      // Clean total seconds matching the active unignored domains
+      const totalSeconds = domainEntries.reduce((acc, cur) => acc + (cur.seconds || 0), 0);
 
       // Top 5 sites
       let top5 = domainEntries.slice(0, 5);
@@ -313,7 +356,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
             const existingHosts = new Set(top5.map((s) => s.host));
             for (const item of topChromeSites) {
               const h = extractHost(item.url);
-              if (h && !existingHosts.has(h)) {
+              if (h && !isIgnoredHost(h) && !existingHosts.has(h)) {
                 existingHosts.add(h);
                 top5.push({ host: h, seconds: 0, fromTopSites: true, title: item.title || h });
                 if (top5.length >= 5) break;
