@@ -2479,12 +2479,25 @@ const GITHUB_RAW_MANIFEST = `https://raw.githubusercontent.com/${GITHUB_REPO}/ma
 const GITHUB_RELEASES_API = `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`;
 const GITHUB_ZIP_URL = `https://github.com/${GITHUB_REPO}/archive/refs/heads/main.zip`;
 
+function extractVersion(str) {
+  if (!str) return null;
+  // Match full semver like "1.0.1" or "v1.0.1" first, else simple numbers
+  const m = String(str).match(/(\d+(?:\.\d+)+)/) || String(str).match(/(\d+)/);
+  return m ? m[1] : null;
+}
+
+function parseVersionParts(ver) {
+  const clean = extractVersion(ver);
+  if (!clean) return [0];
+  return clean.split(".").map((n) => parseInt(n, 10) || 0);
+}
+
 function isVersionNewer(remote, local) {
   if (!remote || !local) return false;
-  const parse = (v) => String(v).replace(/^v/, "").split(".").map((n) => parseInt(n, 10) || 0);
-  const r = parse(remote);
-  const l = parse(local);
-  for (let i = 0; i < Math.max(r.length, l.length); i++) {
+  const r = parseVersionParts(remote);
+  const l = parseVersionParts(local);
+  const len = Math.max(r.length, l.length);
+  for (let i = 0; i < len; i++) {
     const rv = r[i] || 0;
     const lv = l[i] || 0;
     if (rv > lv) return true;
@@ -2494,28 +2507,60 @@ function isVersionNewer(remote, local) {
 }
 
 async function fetchRemoteVersion() {
+  let releaseCandidate = null;
+  let manifestCandidate = null;
+
+  // 1. Fetch GitHub Releases API (latest release title, tag, notes, and direct URL)
   try {
-    // 1. Check raw manifest on GitHub main branch (immediate response upon git push)
-    const rawRes = await fetch(`${GITHUB_RAW_MANIFEST}?_=${Date.now()}`, { cache: "no-store" });
-    if (rawRes.ok) {
-      const data = await rawRes.json();
-      if (data && data.version) {
-        return { version: data.version, name: `v${data.version}`, notes: data.description || "", source: "manifest" };
+    const relRes = await fetch(GITHUB_RELEASES_API, {
+      headers: { Accept: "application/vnd.github.v3+json" }
+    });
+    if (relRes.ok) {
+      const rel = await relRes.json();
+      // Look at rel.name first ("v1.0.1"), then rel.tag_name ("Glass-widet-v2")
+      const ver = extractVersion(rel.name) || extractVersion(rel.tag_name);
+      if (ver) {
+        releaseCandidate = {
+          version: ver,
+          name: rel.name || `v${ver}`,
+          tag: rel.tag_name,
+          notes: rel.body || "",
+          url: rel.html_url || `https://github.com/${GITHUB_REPO}/releases`,
+          zipUrl: rel.zipball_url || GITHUB_ZIP_URL,
+          source: "release"
+        };
       }
     }
   } catch (e) {}
 
+  // 2. Also check raw manifest on GitHub main branch
   try {
-    // 2. Fallback to GitHub Releases API
-    const relRes = await fetch(GITHUB_RELEASES_API, { headers: { Accept: "application/vnd.github.v3+json" } });
-    if (relRes.ok) {
-      const rel = await relRes.json();
-      const ver = (rel.tag_name || "").replace(/^v/, "");
-      return { version: ver, name: rel.name || `v${ver}`, notes: rel.body || "", url: rel.html_url, source: "release" };
+    const rawRes = await fetch(`${GITHUB_RAW_MANIFEST}?_=${Date.now()}`, { cache: "no-store" });
+    if (rawRes.ok) {
+      const data = await rawRes.json();
+      const ver = extractVersion(data?.version);
+      if (ver) {
+        manifestCandidate = {
+          version: ver,
+          name: `v${ver}`,
+          notes: data.description || "",
+          url: `https://github.com/${GITHUB_REPO}`,
+          zipUrl: GITHUB_ZIP_URL,
+          source: "manifest"
+        };
+      }
     }
   } catch (e) {}
 
-  return null;
+  // Pick whichever version candidate is higher
+  if (releaseCandidate && manifestCandidate) {
+    if (isVersionNewer(releaseCandidate.version, manifestCandidate.version)) {
+      return releaseCandidate;
+    }
+    return manifestCandidate;
+  }
+
+  return releaseCandidate || manifestCandidate || null;
 }
 
 function initUpdateChecker() {
@@ -2544,8 +2589,21 @@ function initUpdateChecker() {
       if (modalSummary) {
         modalSummary.textContent = `Liquid Glass v${v} is ready to install! Follow the quick steps below to update:`;
       }
+      const notesEl = $("#updateModalNotes");
+      if (notesEl) {
+        if (info?.notes) {
+          notesEl.innerHTML = `<strong>✨ What's New in v${v}:</strong><div style="margin-top:6px;white-space:pre-wrap;opacity:0.92;line-height:1.5;font-size:12.5px;">${info.notes}</div>`;
+          notesEl.hidden = false;
+        } else {
+          notesEl.hidden = true;
+        }
+      }
       if (modalDownloadBtn) {
-        modalDownloadBtn.href = GITHUB_ZIP_URL;
+        modalDownloadBtn.href = info?.zipUrl || GITHUB_ZIP_URL;
+      }
+      const releasesBtn = $("#modalReleasesBtn");
+      if (releasesBtn && info?.url) {
+        releasesBtn.href = info.url;
       }
     }
   };
@@ -2572,13 +2630,15 @@ function initUpdateChecker() {
 
   if (updateDownloadBtn) {
     updateDownloadBtn.addEventListener("click", () => {
-      openExternalTab(GITHUB_ZIP_URL);
+      const url = latestInfo?.zipUrl || GITHUB_ZIP_URL;
+      openExternalTab(url);
     });
   }
 
   if (drawerDownloadBtn) {
     drawerDownloadBtn.addEventListener("click", () => {
-      openExternalTab(GITHUB_ZIP_URL);
+      const url = latestInfo?.zipUrl || GITHUB_ZIP_URL;
+      openExternalTab(url);
     });
   }
 
@@ -2608,6 +2668,7 @@ function initUpdateChecker() {
 
     latestInfo = remote;
     localStorage.setItem("lg_last_known_ver", remote.version);
+    localStorage.setItem("lg_last_update_check", String(Date.now()));
     const hasUpdate = isVersionNewer(remote.version, CURRENT_VERSION);
 
     if (hasUpdate) {
@@ -2618,6 +2679,7 @@ function initUpdateChecker() {
       showUpdateBanner(remote);
       if (manual) {
         openUpdateModal(remote);
+        toast(`✨ New update v${remote.version} found!`);
       }
     } else {
       if (statusLabel) statusLabel.textContent = `Up to date (v${CURRENT_VERSION})`;
@@ -2628,28 +2690,13 @@ function initUpdateChecker() {
   }
 
   if (checkBtn) {
-    checkBtn.addEventListener("click", () => checkForUpdates(true));
+    checkBtn.addEventListener("click", () => {
+      checkForUpdates(true);
+    });
   }
 
-  // Automatic periodic check: once every 60 minutes
-  const now = Date.now();
-  const lastCheck = parseInt(localStorage.getItem("lg_last_update_check") || "0", 10);
-  if (now - lastCheck > 60 * 60 * 1000) {
-    localStorage.setItem("lg_last_update_check", String(now));
-    setTimeout(() => checkForUpdates(false), 2500);
-  } else {
-    const cachedVer = localStorage.getItem("lg_last_known_ver");
-    if (cachedVer && isVersionNewer(cachedVer, CURRENT_VERSION)) {
-      latestInfo = { version: cachedVer };
-      if (statusLabel) {
-        statusLabel.innerHTML = `<span style="color:#38bdf8;font-weight:600;">Update v${cachedVer} available!</span>`;
-      }
-      if (drawerDownloadBtn) drawerDownloadBtn.hidden = false;
-      showUpdateBanner(latestInfo);
-    } else {
-      if (statusLabel) statusLabel.textContent = `Up to date (v${CURRENT_VERSION})`;
-    }
-  }
+  // Automatic background update check on load (2s after load)
+  setTimeout(() => checkForUpdates(false), 2000);
 }
 
 /* ---------- splash boot reveal animation ---------------------------------------- */
