@@ -239,22 +239,25 @@ function applyAppearance() {
   const b = S.blur != null ? S.blur : 24;
   const a = S.opacity != null ? S.opacity / 100 : 0.22;
   const r = S.radius != null ? S.radius : 20;
+  const br = S.brightness != null ? S.brightness : 100;
   const lq = S.liquid || DEFAULTS.liquid;
   const isLiquid = lq.enabled !== false;
-  const spec = isLiquid ? (lq.specularOpacity != null ? lq.specularOpacity : 0.65) : 0.2;
+  const spec = isLiquid ? (lq.specularOpacity != null ? lq.specularOpacity : 0.65) : 0.05;
   const sat = isLiquid ? (lq.specularSaturation != null ? lq.specularSaturation : 6) : 0;
   const angle = lq.lightAngle != null ? lq.lightAngle : -60;
   const bezel = lq.bezel != null ? lq.bezel : 24;
   const refr = lq.refractionScale != null ? lq.refractionScale : 28;
+  const profile = lq.profile || "convex-squircle";
 
-  // Calculate physical light vector for bevel shadow
+  // Calculate physical 3D light vector from light angle
   const rad = (angle * Math.PI) / 180;
-  const bevelY = Math.round(-Math.sin(rad) * 2.2 * 10) / 10;
+  const bevelX = Math.round(Math.cos(rad) * (bezel * 0.15 + 1.2) * 10) / 10;
+  const bevelY = Math.round(Math.sin(rad) * (bezel * 0.15 + 1.2) * 10) / 10;
 
+  root.dataset.profile = profile;
   root.classList.toggle("liquid", isLiquid);
   root.classList.toggle("no-liquid", !isLiquid);
 
-  const br = S.brightness != null ? S.brightness : 100;
   root.style.setProperty("--bg-brightness", String(br / 100));
   root.style.setProperty("--glass-blur", `${b}px`);
   root.style.setProperty("--glass-a", String(a));
@@ -266,12 +269,16 @@ function applyAppearance() {
   root.style.setProperty("--glass-angle", `${angle}deg`);
   root.style.setProperty("--glass-bezel", `${bezel}px`);
   root.style.setProperty("--glass-refract", `${refr}px`);
+  root.style.setProperty("--glass-bevel-x", `${bevelX}px`);
   root.style.setProperty("--glass-bevel-y", `${bevelY}px`);
 
   // Direct element style update for instant frame-by-frame reactivity.
   // Setting backdropFilter directly on elements forces Chromium's GPU compositor
   // to immediately repaint the blur on every slider drag frame!
-  const cardBackdrop = b > 0 ? `blur(${b}px) saturate(${120 + sat * 10}%) brightness(112%) contrast(104%)` : "none";
+  const cardBackdrop = b > 0 
+    ? `blur(${b}px) saturate(${100 + sat * 18}%) brightness(${102 + spec * 14}%) contrast(104%)` 
+    : `saturate(${100 + sat * 18}%) brightness(${102 + spec * 14}%) contrast(104%)`;
+
   $$(".card, .search").forEach((c) => {
     c.style.setProperty("--glass-blur", `${b}px`);
     c.style.setProperty("--glass-a", String(a));
@@ -281,6 +288,7 @@ function applyAppearance() {
     c.style.setProperty("--glass-angle", `${angle}deg`);
     c.style.setProperty("--glass-bezel", `${bezel}px`);
     c.style.setProperty("--glass-refract", `${refr}px`);
+    c.style.setProperty("--glass-bevel-x", `${bevelX}px`);
     c.style.setProperty("--glass-bevel-y", `${bevelY}px`);
     c.style.backdropFilter = cardBackdrop;
     c.style.webkitBackdropFilter = cardBackdrop;
@@ -2001,6 +2009,7 @@ function initSettings() {
         x.classList.toggle("on", x === b)
       );
       if (window.LiquidGlass) LiquidGlass.updateSettings({ profile: S.liquid.profile });
+      applyAppearance();
       await save({ liquid: S.liquid });
       toast(`Glass Profile: ${b.textContent}`);
     });
