@@ -2361,6 +2361,186 @@ function initSearch() {
   });
 }
 
+/* ---------- GitHub Auto-Update Checker ------------------------------------------- */
+const CURRENT_VERSION = (typeof chrome !== "undefined" && chrome.runtime?.getManifest?.()?.version) || "1.0.0";
+const GITHUB_REPO = "Akash7037/Glass-Widget-";
+const GITHUB_RAW_MANIFEST = `https://raw.githubusercontent.com/${GITHUB_REPO}/main/manifest.json`;
+const GITHUB_RELEASES_API = `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`;
+const GITHUB_ZIP_URL = `https://github.com/${GITHUB_REPO}/archive/refs/heads/main.zip`;
+
+function isVersionNewer(remote, local) {
+  if (!remote || !local) return false;
+  const parse = (v) => String(v).replace(/^v/, "").split(".").map((n) => parseInt(n, 10) || 0);
+  const r = parse(remote);
+  const l = parse(local);
+  for (let i = 0; i < Math.max(r.length, l.length); i++) {
+    const rv = r[i] || 0;
+    const lv = l[i] || 0;
+    if (rv > lv) return true;
+    if (rv < lv) return false;
+  }
+  return false;
+}
+
+async function fetchRemoteVersion() {
+  try {
+    // 1. Check raw manifest on GitHub main branch (immediate response upon git push)
+    const rawRes = await fetch(`${GITHUB_RAW_MANIFEST}?_=${Date.now()}`, { cache: "no-store" });
+    if (rawRes.ok) {
+      const data = await rawRes.json();
+      if (data && data.version) {
+        return { version: data.version, name: `v${data.version}`, notes: data.description || "", source: "manifest" };
+      }
+    }
+  } catch (e) {}
+
+  try {
+    // 2. Fallback to GitHub Releases API
+    const relRes = await fetch(GITHUB_RELEASES_API, { headers: { Accept: "application/vnd.github.v3+json" } });
+    if (relRes.ok) {
+      const rel = await relRes.json();
+      const ver = (rel.tag_name || "").replace(/^v/, "");
+      return { version: ver, name: rel.name || `v${ver}`, notes: rel.body || "", url: rel.html_url, source: "release" };
+    }
+  } catch (e) {}
+
+  return null;
+}
+
+function initUpdateChecker() {
+  const curVerEl = $("#currentVerLabel");
+  const statusLabel = $("#updateStatusLabel");
+  const checkBtn = $("#checkUpdatesBtn");
+  const drawerDownloadBtn = $("#drawerDownloadUpdateBtn");
+  const banner = $("#updateBanner");
+  const bannerText = $("#updateBannerText");
+  const updateDownloadBtn = $("#updateDownloadBtn");
+  const updateHowBtn = $("#updateHowBtn");
+  const updateDismissBtn = $("#updateDismissBtn");
+  const modalBackdrop = $("#updateModalBackdrop");
+  const modalCloseBtn = $("#updateModalCloseBtn");
+  const modalSummary = $("#updateModalSummary");
+  const modalDownloadBtn = $("#modalDownloadBtn");
+
+  if (curVerEl) curVerEl.textContent = `v${CURRENT_VERSION}`;
+
+  let latestInfo = null;
+
+  const openUpdateModal = (info) => {
+    if (modalBackdrop) {
+      modalBackdrop.hidden = false;
+      const v = info?.version || "new";
+      if (modalSummary) {
+        modalSummary.textContent = `Liquid Glass v${v} is ready to install! Follow the quick steps below to update:`;
+      }
+      if (modalDownloadBtn) {
+        modalDownloadBtn.href = GITHUB_ZIP_URL;
+      }
+    }
+  };
+
+  const closeUpdateModal = () => {
+    if (modalBackdrop) modalBackdrop.hidden = true;
+  };
+
+  if (modalCloseBtn) modalCloseBtn.addEventListener("click", closeUpdateModal);
+  if (modalBackdrop) {
+    modalBackdrop.addEventListener("click", (e) => {
+      if (e.target === modalBackdrop) closeUpdateModal();
+    });
+  }
+
+  const showUpdateBanner = (info) => {
+    if (!banner || !bannerText) return;
+    const dismissedVer = sessionStorage.getItem("lg_update_dismissed");
+    if (dismissedVer === info.version) return;
+
+    bannerText.textContent = `Liquid Glass v${info.version} is available! (Installed: v${CURRENT_VERSION})`;
+    banner.hidden = false;
+  };
+
+  if (updateDownloadBtn) {
+    updateDownloadBtn.addEventListener("click", () => {
+      openExternalTab(GITHUB_ZIP_URL);
+    });
+  }
+
+  if (drawerDownloadBtn) {
+    drawerDownloadBtn.addEventListener("click", () => {
+      openExternalTab(GITHUB_ZIP_URL);
+    });
+  }
+
+  if (updateHowBtn) {
+    updateHowBtn.addEventListener("click", () => openUpdateModal(latestInfo));
+  }
+
+  if (updateDismissBtn) {
+    updateDismissBtn.addEventListener("click", () => {
+      if (banner) banner.hidden = true;
+      if (latestInfo?.version) {
+        sessionStorage.setItem("lg_update_dismissed", latestInfo.version);
+      }
+    });
+  }
+
+  async function checkForUpdates(manual = false) {
+    if (statusLabel) statusLabel.textContent = "Checking…";
+    if (manual) toast("Checking GitHub for updates…");
+
+    const remote = await fetchRemoteVersion();
+    if (!remote || !remote.version) {
+      if (statusLabel) statusLabel.textContent = "Could not reach GitHub";
+      if (manual) toast("Could not reach GitHub to check updates");
+      return;
+    }
+
+    latestInfo = remote;
+    localStorage.setItem("lg_last_known_ver", remote.version);
+    const hasUpdate = isVersionNewer(remote.version, CURRENT_VERSION);
+
+    if (hasUpdate) {
+      if (statusLabel) {
+        statusLabel.innerHTML = `<span style="color:#38bdf8;font-weight:600;">Update v${remote.version} available!</span>`;
+      }
+      if (drawerDownloadBtn) drawerDownloadBtn.hidden = false;
+      showUpdateBanner(remote);
+      if (manual) {
+        openUpdateModal(remote);
+      }
+    } else {
+      if (statusLabel) statusLabel.textContent = `Up to date (v${CURRENT_VERSION})`;
+      if (drawerDownloadBtn) drawerDownloadBtn.hidden = true;
+      if (banner) banner.hidden = true;
+      if (manual) toast(`Liquid Glass is up to date (v${CURRENT_VERSION})!`);
+    }
+  }
+
+  if (checkBtn) {
+    checkBtn.addEventListener("click", () => checkForUpdates(true));
+  }
+
+  // Automatic periodic check: once every 60 minutes
+  const now = Date.now();
+  const lastCheck = parseInt(localStorage.getItem("lg_last_update_check") || "0", 10);
+  if (now - lastCheck > 60 * 60 * 1000) {
+    localStorage.setItem("lg_last_update_check", String(now));
+    setTimeout(() => checkForUpdates(false), 2500);
+  } else {
+    const cachedVer = localStorage.getItem("lg_last_known_ver");
+    if (cachedVer && isVersionNewer(cachedVer, CURRENT_VERSION)) {
+      latestInfo = { version: cachedVer };
+      if (statusLabel) {
+        statusLabel.innerHTML = `<span style="color:#38bdf8;font-weight:600;">Update v${cachedVer} available!</span>`;
+      }
+      if (drawerDownloadBtn) drawerDownloadBtn.hidden = false;
+      showUpdateBanner(latestInfo);
+    } else {
+      if (statusLabel) statusLabel.textContent = `Up to date (v${CURRENT_VERSION})`;
+    }
+  }
+}
+
 /* ---------- splash boot reveal animation ---------------------------------------- */
 function dismissSplash() {
   const curtain = $("#splashCurtain");
@@ -2449,6 +2629,7 @@ async function init() {
   initSearch();
   initGoogleLens();
   initFocusAccomplishment();
+  initUpdateChecker();
   wireDragDrop();
 
   const themeToggleBtn = $("#themeToggleBtn");

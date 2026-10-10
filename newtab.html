@@ -89,6 +89,19 @@
     <div class="veil" aria-hidden="true"></div>
 
     <div class="app-wrap" id="appWrap">
+      <!-- Auto Update Notification Banner -->
+      <div class="update-banner" id="updateBanner" hidden>
+        <div class="update-banner-content">
+          <span class="update-banner-badge">✨ NEW UPDATE</span>
+          <span class="update-banner-text" id="updateBannerText">Liquid Glass update available!</span>
+          <div class="update-banner-actions">
+            <button class="update-btn-action" id="updateDownloadBtn" type="button">Update Now</button>
+            <button class="update-btn-how" id="updateHowBtn" type="button">How to Update</button>
+            <button class="update-close-btn" id="updateDismissBtn" type="button" aria-label="Dismiss">✕</button>
+          </div>
+        </div>
+      </div>
+
       <!-- top bar -->
       <header class="topbar">
         <form class="search" id="searchForm" autocomplete="off">
@@ -563,6 +576,26 @@
           </div>
         </section>
 
+        <section class="set-group" id="updatesSetGroup">
+          <h4>About &amp; Updates</h4>
+          <div class="set-row">
+            <span class="set-label">Installed Version</span>
+            <b class="pill-ver" id="currentVerLabel">v1.0.0</b>
+          </div>
+          <div class="set-row">
+            <span class="set-label">Update Status</span>
+            <span class="update-status-label" id="updateStatusLabel">Checking…</span>
+          </div>
+          <div class="set-row" style="margin-top: 6px;">
+            <button class="btn-line subtle" id="checkUpdatesBtn" type="button">
+              Check for updates
+            </button>
+            <button class="btn-line subtle" id="drawerDownloadUpdateBtn" type="button" hidden>
+              Download latest ZIP
+            </button>
+          </div>
+        </section>
+
         <button class="btn-line danger" id="resetBtn" type="button">
           Reset all settings
         </button>
@@ -659,6 +692,46 @@
             </div>
           </div>
         </form>
+      </div>
+    </div>
+
+    <!-- Update Instructions Modal -->
+    <div class="update-modal-backdrop" id="updateModalBackdrop" hidden>
+      <div class="update-modal" id="updateModal" role="dialog" aria-modal="true" aria-labelledby="updateModalTitle">
+        <div class="update-modal-header">
+          <h3 id="updateModalTitle">✨ Liquid Glass Update</h3>
+          <button type="button" class="lens-close-btn" id="updateModalCloseBtn" aria-label="Close update modal">✕</button>
+        </div>
+        <div class="update-modal-body">
+          <p id="updateModalSummary" style="font-size: 13.5px; color: var(--muted); margin-bottom: 14px; line-height: 1.5;"></p>
+          <div class="update-steps">
+            <div class="update-step-item">
+              <span class="step-num">1</span>
+              <div>
+                <strong>Download Latest Release</strong>
+                <p>Click below to download the latest pack ZIP from GitHub.</p>
+              </div>
+            </div>
+            <div class="update-step-item">
+              <span class="step-num">2</span>
+              <div>
+                <strong>Extract into Extension Folder</strong>
+                <p>Extract the new files into your existing extension folder to replace them.</p>
+              </div>
+            </div>
+            <div class="update-step-item">
+              <span class="step-num">3</span>
+              <div>
+                <strong>Click Reload in Chrome</strong>
+                <p>Go to <code>chrome://extensions</code> and click the <strong>Reload (↻)</strong> icon.</p>
+              </div>
+            </div>
+          </div>
+          <div class="update-modal-footer">
+            <a class="btn-action-primary" id="modalDownloadBtn" href="https://github.com/Akash7037/Glass-Widget-/archive/refs/heads/main.zip" target="_blank">Download Update ZIP</a>
+            <a class="btn-action-secondary" id="modalReleasesBtn" href="https://github.com/Akash7037/Glass-Widget-/releases" target="_blank">View on GitHub</a>
+          </div>
+        </div>
       </div>
     </div>
 
