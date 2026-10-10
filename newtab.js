@@ -160,7 +160,8 @@ const DEFAULTS = {
     bezel: 24,
     specularOpacity: 0.65,
     specularSaturation: 2.0,
-    lightAngle: -60
+    lightAngle: -60,
+    cursorLight: false
   }
 };
 
@@ -232,6 +233,59 @@ function shiftHue(hex, deg) {
   const { h, s, l } = hexToHsl(hex);
   const hh = (h + deg + 360) % 360;
   return `hsl(${hh} ${Math.min(100, s)}% ${Math.min(78, l + 8)}%)`;
+}
+
+/* ---------- Dynamic Cursor Light Tracking --------------------------------- */
+let cursorLightRaf = null;
+let lastPointerX = typeof window !== "undefined" ? window.innerWidth / 2 : 500;
+let lastPointerY = typeof window !== "undefined" ? window.innerHeight / 2 : 400;
+
+function updateDynamicLight() {
+  cursorLightRaf = null;
+  const lq = S.liquid || DEFAULTS.liquid;
+  if (!lq.cursorLight) return;
+
+  const bezel = lq.bezel != null ? lq.bezel : 24;
+  const elements = $$(".card, .search");
+
+  for (let i = 0; i < elements.length; i++) {
+    const el = elements[i];
+    const rect = el.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const dx = lastPointerX - cx;
+    const dy = lastPointerY - cy;
+
+    // Angle of element towards cursor
+    const cursorAngle = Math.atan2(dy, dx) * (180 / Math.PI);
+    // Light reflection orientation: points directly towards cursor
+    const lightAngle = cursorAngle - 180;
+    const rad = (lightAngle * Math.PI) / 180;
+
+    // Proximity factor: closer cursor produces a tighter, crisper specular gleam
+    const dist = Math.hypot(dx, dy);
+    const proximity = Math.max(0.75, Math.min(1.35, 1.35 - dist / 1100));
+    const effectiveBezel = bezel * proximity;
+
+    const bevelX = Math.round(Math.cos(rad) * (effectiveBezel * 0.15 + 1.2) * 10) / 10;
+    const bevelY = Math.round(Math.sin(rad) * (effectiveBezel * 0.15 + 1.2) * 10) / 10;
+
+    el.style.setProperty("--glass-angle", `${Math.round(lightAngle)}deg`);
+    el.style.setProperty("--glass-bevel-x", `${bevelX}px`);
+    el.style.setProperty("--glass-bevel-y", `${bevelY}px`);
+  }
+}
+
+function queueDynamicLight(e) {
+  if (e && typeof e.clientX === "number") {
+    lastPointerX = e.clientX;
+    lastPointerY = e.clientY;
+  }
+  const lq = S.liquid || DEFAULTS.liquid;
+  if (!lq.cursorLight) return;
+  if (!cursorLightRaf) {
+    cursorLightRaf = requestAnimationFrame(updateDynamicLight);
+  }
 }
 
 function applyAppearance() {
@@ -322,6 +376,28 @@ function applyAppearance() {
   $$("#themeSeg button").forEach((btn) =>
     btn.classList.toggle("on", btn.dataset.theme === S.theme)
   );
+
+  const isCursorLight = Boolean(lq.cursorLight);
+  const quickBtn = $("#dynamicLightQuickBtn");
+  if (quickBtn) {
+    quickBtn.classList.toggle("on", isCursorLight);
+    quickBtn.title = isCursorLight
+      ? "Dynamic Cursor Light ON (click to use fixed angle)"
+      : "Turn on Dynamic Cursor Light (elements follow mouse)";
+  }
+  const cursorToggle = $("#cursorLightToggle");
+  if (cursorToggle) {
+    cursorToggle.checked = isCursorLight;
+  }
+  const angleRow = $("#angleSliderRow");
+  if (angleRow) {
+    angleRow.style.opacity = isCursorLight ? "0.4" : "1";
+    angleRow.style.pointerEvents = isCursorLight ? "none" : "auto";
+  }
+
+  if (isCursorLight) {
+    updateDynamicLight();
+  }
 
   if (window.LiquidGlass && window.LiquidGlass.refresh) {
     window.LiquidGlass.refresh();
@@ -1433,9 +1509,12 @@ async function completeSession() {
   await sendMessage({ type: "focus:stop" });
   S.sessions = (S.sessions || 0) + 1;
   await save({ sessions: S.sessions });
-  $("#sessionStat").textContent = `${S.sessions} focus session${
-    S.sessions === 1 ? "" : "s"
-  }`;
+  const sessionEl = $("#sessionStat");
+  if (sessionEl) {
+    sessionEl.textContent = `${S.sessions} focus session${
+      S.sessions === 1 ? "" : "s"
+    }`;
+  }
   showSetupView();
   toast("🎉 Focus session complete — nice work!");
   if (typeof promptFocusAccomplishment === "function") {
@@ -1718,6 +1797,8 @@ function initSettings() {
       setVal("specularRange", Math.round((S.liquid.specularOpacity != null ? S.liquid.specularOpacity : 0.55) * 100), `${Math.round((S.liquid.specularOpacity != null ? S.liquid.specularOpacity : 0.55) * 100)}%`);
       setVal("satRange", S.liquid.specularSaturation, `${S.liquid.specularSaturation}x`);
       setVal("angleRange", S.liquid.lightAngle, `${S.liquid.lightAngle}°`);
+      const cursorToggle = $("#cursorLightToggle");
+      if (cursorToggle) cursorToggle.checked = Boolean(S.liquid.cursorLight);
     }
   };
   syncDrawerSliders();
@@ -1983,6 +2064,27 @@ function initSettings() {
   bindLiquidRange("specularRange", "specularOpacity", (v) => `${Math.round((v != null ? v : 0.65) * 100)}%`);
   bindLiquidRange("satRange", "specularSaturation", (v) => `${v}x`);
   bindLiquidRange("angleRange", "lightAngle", (v) => `${v}°`);
+
+  const cursorLightToggle = $("#cursorLightToggle");
+  if (cursorLightToggle) {
+    cursorLightToggle.checked = Boolean(S.liquid?.cursorLight);
+    cursorLightToggle.addEventListener("change", async () => {
+      S.liquid.cursorLight = cursorLightToggle.checked;
+      applyAppearance();
+      await save({ liquid: S.liquid });
+      toast(S.liquid.cursorLight ? "Dynamic cursor light tracking enabled" : "Fixed light angle restored");
+    });
+  }
+
+  const quickDynamicBtn = $("#dynamicLightQuickBtn");
+  if (quickDynamicBtn) {
+    quickDynamicBtn.addEventListener("click", async () => {
+      S.liquid.cursorLight = !S.liquid?.cursorLight;
+      applyAppearance();
+      await save({ liquid: S.liquid });
+      toast(S.liquid.cursorLight ? "Dynamic cursor light tracking enabled" : "Fixed light angle restored");
+    });
+  }
 
   const liquidToggle = $("#liquidToggle");
   if (liquidToggle) {
@@ -2670,9 +2772,17 @@ async function init() {
     });
   }
 
-  $("#sessionStat").textContent = `${S.sessions || 0} focus session${
-    (S.sessions || 0) === 1 ? "" : "s"
-  }`;
+  const sessStat = $("#sessionStat");
+  if (sessStat) {
+    sessStat.textContent = `${S.sessions || 0} focus session${
+      (S.sessions || 0) === 1 ? "" : "s"
+    }`;
+  }
+
+  // Global dynamic light tracking listeners
+  window.addEventListener("pointermove", queueDynamicLight, { passive: true });
+  window.addEventListener("resize", () => queueDynamicLight());
+  window.addEventListener("scroll", () => queueDynamicLight(), { passive: true });
 
   const lensBtn = $("#lensBtn");
   if (lensBtn) {

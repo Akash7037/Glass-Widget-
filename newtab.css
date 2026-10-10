@@ -870,6 +870,17 @@ kbd {
   color: #ffffff;
 }
 
+#dynamicLightQuickBtn.on {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+.foot {
+  display: none !important;
+}
+
 /* ---------- 8. Hero greeting ---------------------------------------------- */
 
 .hero-greet {
