@@ -7,9 +7,9 @@
 /* ---------- 1. Tokens & themes ------------------------------------------- */
 
 :root {
-  --glass-blur: 16px;
-  --glass-a: 0.18;
-  --radius: 24px;
+  --glass-blur: 11px;
+  --glass-a: 0;
+  --radius: 25px;
   --accent: #7dd3fc;
   --accent-2: #c4b5fd;
 

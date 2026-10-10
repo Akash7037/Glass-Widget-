@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Liquid Glass — New Tab",
-  "version": "1.0.0",
+  "version": "1.0.3",
   "description": "A liquid glass / glassmorphism new tab: clock, weather, notes, tasks, saved links, focus (Pomodoro) timer that blocks distracting sites, custom background, blur & opacity controls.",
   "chrome_url_overrides": {
     "newtab": "newtab.html"

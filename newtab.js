@@ -122,11 +122,11 @@ const DEFAULT_SITES = [
 ];
 
 const DEFAULTS = {
-  bg: { type: "gradient", value: GRADIENTS[0] },
+  bg: { type: "image", value: PHOTOS[0] },
   brightness: 100,
-  blur: 24,
-  opacity: 22,
-  radius: 20,
+  blur: 11,
+  opacity: 0,
+  radius: 25,
   theme: "dark",
   accent: "#7dd3fc",
   accent2: "#c4b5fd",
@@ -156,11 +156,11 @@ const DEFAULTS = {
   liquid: {
     enabled: true,
     profile: "convex-squircle",
-    refractionScale: 28,
-    bezel: 24,
-    specularOpacity: 0.65,
-    specularSaturation: 2.0,
-    lightAngle: -60,
+    refractionScale: 5,
+    bezel: 11,
+    specularOpacity: 0.35,
+    specularSaturation: 4,
+    lightAngle: -120,
     cursorLight: false
   }
 };
@@ -2473,7 +2473,7 @@ function initSearch() {
 }
 
 /* ---------- GitHub Auto-Update Checker ------------------------------------------- */
-const CURRENT_VERSION = (typeof chrome !== "undefined" && chrome.runtime?.getManifest?.()?.version) || "1.0.0";
+const CURRENT_VERSION = (typeof chrome !== "undefined" && chrome.runtime?.getManifest?.()?.version) || "1.0.3";
 const GITHUB_REPO = "Akash7037/Glass-Widget-";
 const GITHUB_RAW_MANIFEST = `https://raw.githubusercontent.com/${GITHUB_REPO}/main/manifest.json`;
 const GITHUB_RELEASES_API = `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`;
@@ -2742,17 +2742,29 @@ async function init() {
     S[k] = { ...DEFAULTS[k], ...(all[k] || {}) };
   if (!Array.isArray(S.order) || !S.order.length) S.order = [...DEFAULTS.order];
 
-  // Self-heal stored state: ensure normal Liquid Glass is restored unless user explicitly chose OLED
-  if (S.theme !== "oled") {
-    if (S.bg && S.bg.type === "gradient" && (S.bg.value === "linear-gradient(180deg, #090909 0%, #050505 100%)" || S.bg.value.includes("#090909"))) {
-      S.bg = { type: "gradient", value: GRADIENTS[0] };
+  // Apply v1.0.3 default profile (blur 11px, opacity 0%, radius 25px, 6th background, -120 deg light angle)
+  const v103Applied = localStorage.getItem("lg_v103_preset");
+  if (!v103Applied) {
+    S.blur = 11;
+    S.opacity = 0;
+    S.radius = 25;
+    S.brightness = 100;
+    if (!S.bg || S.bg.value === GRADIENTS[0] || (S.bg.type === "gradient" && S.bg.value.includes("#0b1120"))) {
+      S.bg = { type: "image", value: PHOTOS[0] };
     }
-    if (S.radius === 6) S.radius = 24;
-    if (S.opacity === 8) S.opacity = 14;
-    if (S.accent === "#ffffff" && S.accent2 === "#888888") {
-      S.accent = "#7dd3fc";
-      S.accent2 = "#c4b5fd";
-    }
+    S.liquid = {
+      ...S.liquid,
+      enabled: true,
+      profile: "convex-squircle",
+      refractionScale: 5,
+      bezel: 11,
+      specularOpacity: 0.35,
+      specularSaturation: 4,
+      lightAngle: -120,
+      cursorLight: false
+    };
+    localStorage.setItem("lg_v103_preset", "true");
+    save({ blur: 11, opacity: 0, radius: 25, brightness: 100, bg: S.bg, liquid: S.liquid });
   }
 
   // Ensure valid fallback values if missing
