@@ -124,9 +124,9 @@ const DEFAULT_SITES = [
 const DEFAULTS = {
   bg: { type: "gradient", value: GRADIENTS[0] },
   brightness: 100,
-  blur: 16,
-  opacity: 14,
-  radius: 24,
+  blur: 24,
+  opacity: 22,
+  radius: 20,
   theme: "dark",
   accent: "#7dd3fc",
   accent2: "#c4b5fd",
@@ -236,9 +236,9 @@ function shiftHue(hex, deg) {
 
 function applyAppearance() {
   const root = document.documentElement;
-  const b = S.blur != null ? S.blur : 8;
-  const a = S.opacity != null ? S.opacity / 100 : 0.08;
-  const r = S.radius != null ? S.radius : 26;
+  const b = S.blur != null ? S.blur : 24;
+  const a = S.opacity != null ? S.opacity / 100 : 0.22;
+  const r = S.radius != null ? S.radius : 20;
   const lq = S.liquid || DEFAULTS.liquid;
   const isLiquid = lq.enabled !== false;
   const spec = isLiquid ? (lq.specularOpacity != null ? lq.specularOpacity : 0.65) : 0.2;
@@ -268,7 +268,10 @@ function applyAppearance() {
   root.style.setProperty("--glass-refract", `${refr}px`);
   root.style.setProperty("--glass-bevel-y", `${bevelY}px`);
 
-  // Direct element style update for instant frame-by-frame reactivity
+  // Direct element style update for instant frame-by-frame reactivity.
+  // Setting backdropFilter directly on elements forces Chromium's GPU compositor
+  // to immediately repaint the blur on every slider drag frame!
+  const cardBackdrop = b > 0 ? `blur(${b}px) saturate(${120 + sat * 10}%) brightness(112%) contrast(104%)` : "none";
   $$(".card, .search").forEach((c) => {
     c.style.setProperty("--glass-blur", `${b}px`);
     c.style.setProperty("--glass-a", String(a));
@@ -279,7 +282,16 @@ function applyAppearance() {
     c.style.setProperty("--glass-bezel", `${bezel}px`);
     c.style.setProperty("--glass-refract", `${refr}px`);
     c.style.setProperty("--glass-bevel-y", `${bevelY}px`);
+    c.style.backdropFilter = cardBackdrop;
+    c.style.webkitBackdropFilter = cardBackdrop;
   });
+
+  const drawerEl = $("#drawer");
+  if (drawerEl) {
+    const drawerBackdrop = b > 0 ? `blur(${b + 14}px) saturate(180%)` : "none";
+    drawerEl.style.backdropFilter = drawerBackdrop;
+    drawerEl.style.webkitBackdropFilter = drawerBackdrop;
+  }
 
   let theme = S.theme;
   if (theme === "auto")
