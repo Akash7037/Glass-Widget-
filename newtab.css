@@ -20,9 +20,10 @@
 
   /* normal dark glass theme (defaults) */
   --bg: #070b14;
-  --text: #ffffff;
-  --muted: rgba(255, 255, 255, 0.85);
-  --faint: rgba(255, 255, 255, 0.68);
+  --text: #000000;
+  --muted: rgba(0, 0, 0, 0.82);
+  --faint: rgba(0, 0, 0, 0.65);
+  --text-shadow: 0 1px 2px rgba(255, 255, 255, 0.28);
   --tint: 15 23 42;
   --field: rgba(255, 255, 255, 0.08);
   --line: rgba(255, 255, 255, 0.18);
@@ -444,7 +445,8 @@ body.has-photo .veil {
     inset calc(var(--glass-bevel-x, -1.5px) * -1) calc(var(--glass-bevel-y, -1.5px) * -1) calc(var(--glass-bezel, 24px) * 0.4 + 2px) 0 rgba(0, 0, 0, calc(0.2 + var(--glass-specular, 0.65) * 0.2)),
     0 calc(var(--glass-refract, 28px) * 0.4 + 10px) calc(var(--glass-refract, 28px) * 0.8 + 20px) -8px rgba(0, 0, 0, 0.5);
 
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  color: var(--text);
+  text-shadow: var(--text-shadow, 0 1px 2px rgba(255, 255, 255, 0.28));
   transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.2s var(--ease);
   overflow: hidden;
 }

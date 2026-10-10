@@ -130,6 +130,7 @@ const DEFAULTS = {
   theme: "dark",
   accent: "#7dd3fc",
   accent2: "#c4b5fd",
+  textColor: "#000000",
   timeFormat: "12h",
   showSeconds: true,
   order: ["clock", "weather", "news", "tasks", "links", "notes", "focus"],
@@ -318,6 +319,26 @@ function applyAppearance() {
   root.style.setProperty("--radius", `${r}px`);
   root.style.setProperty("--accent", S.accent);
   root.style.setProperty("--accent-2", S.accent2);
+  const textClr = S.textColor || "#000000";
+  root.style.setProperty("--text", textClr);
+  root.style.setProperty("--muted", `color-mix(in srgb, ${textClr} 82%, transparent)`);
+  root.style.setProperty("--faint", `color-mix(in srgb, ${textClr} 65%, transparent)`);
+
+  const hexClean = (textClr || "#000000").replace("#", "");
+  let isDarkText = true;
+  if (hexClean.length === 6) {
+    const cr = parseInt(hexClean.slice(0, 2), 16);
+    const cg = parseInt(hexClean.slice(2, 4), 16);
+    const cb = parseInt(hexClean.slice(4, 6), 16);
+    isDarkText = (0.2126 * cr + 0.7152 * cg + 0.0722 * cb) < 130;
+  }
+  root.style.setProperty("--text-shadow", isDarkText ? "0 1px 2px rgba(255, 255, 255, 0.28)" : "0 1px 3px rgba(0, 0, 0, 0.45)");
+
+  const textColorInput = $("#textColor");
+  if (textColorInput && textColorInput.value !== textClr) {
+    textColorInput.value = textClr.startsWith("#") ? textClr : "#000000";
+  }
+
   root.style.setProperty("--glass-specular", String(spec));
   root.style.setProperty("--glass-sat", String(sat));
   root.style.setProperty("--glass-angle", `${angle}deg`);
@@ -1906,6 +1927,21 @@ function initSettings() {
     await save({ accent: S.accent, accent2: S.accent2 });
   });
 
+  const textPicker = $("#textColor");
+  if (textPicker) {
+    textPicker.value = S.textColor || "#000000";
+    textPicker.addEventListener("input", () => {
+      S.textColor = textPicker.value;
+      applyAppearance();
+      debounce(() => save({ textColor: S.textColor }), 150)();
+    });
+    textPicker.addEventListener("change", async () => {
+      S.textColor = textPicker.value;
+      applyAppearance();
+      await save({ textColor: S.textColor });
+    });
+  }
+
   /* background upload */
   $("#bgUpload").addEventListener("change", async (e) => {
     const file = e.target.files && e.target.files[0];
@@ -2908,6 +2944,7 @@ async function init() {
       theme: S.theme,
       accent: S.accent,
       accent2: S.accent2,
+      textColor: S.textColor,
       timeFormat: S.timeFormat,
       showSeconds: S.showSeconds,
       name: S.name
