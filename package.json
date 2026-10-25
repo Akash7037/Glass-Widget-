@@ -1,0 +1,17 @@
+{
+  "name": "liquid-glass-clock",
+  "version": "2.0.1",
+  "private": true,
+  "description": "A draggable clock widget on React Bits' GlassSurface",
+  "scripts": {
+    "build": "node build.mjs",
+    "watch": "node build.mjs --watch"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.0"
+  }
+}
